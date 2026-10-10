@@ -165,6 +165,8 @@ export function normalizeConfig(config: EnergyTreeCardConfig, language: Language
     fail("narrow_width must be a positive number");
   }
 
+  if (raw.language != null && raw.language !== "ro" && raw.language !== "en") fail('language must be "ro" or "en"');
+
   const collectionKey = raw.collection_key ?? undefined;
   if (collectionKey !== undefined && (typeof collectionKey !== "string" || !collectionKey.startsWith("energy_"))) {
     fail('collection_key must be a string starting with "energy_"');

@@ -213,6 +213,10 @@ describe("normalizeConfig: errors", () => {
     expect(() => normalize({ layout: "grid" })).toThrow("energy-tree-card: layout must be one of auto, tree, bars");
   });
 
+  it.each([["de"], ["romanian"], [1]])("rejects language %j (only ro or en)", (language) => {
+    expect(() => normalize({ language })).toThrow('energy-tree-card: language must be "ro" or "en"');
+  });
+
   it.each([["custom"], ["energy"], ["my_energy"], [42]])(
     "rejects collection_key %j (it must start with energy_)",
     (key) => {

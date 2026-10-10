@@ -393,9 +393,9 @@ npm run build       # type check + Vite build
 The build writes a single file, `dist/energy-tree-card.js`. To try it, copy it
 to `/config/www/` as in the [manual installation](#manual).
 
-Releases: set the new version in `package.json` (and `VERSION` in
-`src/version.ts`), add it to `CHANGELOG.md`, commit, then push a tag `vX.Y.Z`
-with the same version. The release workflow tests and builds, checks that the
+Releases: set the new version in `package.json` (the card reads its version
+from there), add it to `CHANGELOG.md`, commit, then push a tag `vX.Y.Z` with
+the same version. The release workflow tests and builds, checks that the
 tag matches `package.json`, and creates the GitHub release with
 `energy-tree-card.js` attached; HACS installs that asset.
 

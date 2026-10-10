@@ -1,1 +1,2 @@
-export const VERSION = "0.1.0";
+// Single source of truth for the version: package.json (checked against the tag on release).
+export { version as VERSION } from "../package.json";

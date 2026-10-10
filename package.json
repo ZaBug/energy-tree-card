@@ -1,0 +1,26 @@
+{
+  "name": "energy-tree-card",
+  "version": "0.1.0",
+  "description": "Home Assistant Lovelace card showing household energy as a hierarchy for the Energy date picker period",
+  "type": "module",
+  "license": "MIT",
+  "author": "ZaBug",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZaBug/energy-tree-card.git"
+  },
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^8.0.0",
+    "vitest": "^5.0.3"
+  }
+}

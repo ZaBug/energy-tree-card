@@ -10,12 +10,15 @@ import {
 } from "../src/data/tree";
 import type { EnergyTreeCardConfig, PeriodValues, SourceConfig } from "../src/types";
 import {
+  allNodes,
   august2026Values,
   childIds,
+  E,
   findNode,
   hasNode,
   lastChild,
   makeConfig,
+  nanFields,
   ownerConfig,
 } from "./helpers";
 
@@ -598,5 +601,83 @@ describe("buildEnergyTree: owner's August 2026 totals", () => {
     expect(findNode(tree, "casa").share).toBeCloseTo(478.08 / 789.85, 4);
     expect(findNode(tree, "masina").share).toBeCloseTo(286.97 / 789.85, 4);
     expect(findNode(tree, "ac").share).toBeCloseTo(124.49 / 478.08, 4);
+  });
+});
+
+describe("buildEnergyTree: missing data placeholders", () => {
+  const config = ownerConfig();
+
+  function without(...ids: string[]): PeriodValues {
+    const values = august2026Values();
+    for (const id of ids) delete values[id];
+    return values;
+  }
+
+  it("an entity missing from values gives energy null on its node, not 0", () => {
+    const tree = buildEnergyTree(config, without(E.casuta));
+    expect(findNode(tree, "casuta").energy).toBeNull();
+    expect(findNode(tree, "casuta").share).toBeNull();
+    expect(findNode(tree, "masina").energy).toBeCloseTo(286.97, 2);
+  });
+
+  it("a missing child makes its parent's Rest null and leaves the parent and siblings unchanged", () => {
+    const tree = buildEnergyTree(config, without(E.ac));
+    expect(findNode(tree, "ac").energy).toBeNull();
+    expect(findNode(tree, "rest:casa").energy).toBeNull();
+    expect(findNode(tree, "rest:casa").share).toBeNull();
+    expect(findNode(tree, "casa").energy).toBeCloseTo(478.08, 2);
+    expect(findNode(tree, "server").energy).toBe(0);
+    expect(findNode(tree, "untracked").energy).toBe(0);
+  });
+
+  it("a missing first-level consumer makes Untracked null", () => {
+    const tree = buildEnergyTree(config, without(E.masina));
+    expect(findNode(tree, "untracked").energy).toBeNull();
+    expect(findNode(tree, "untracked").share).toBeNull();
+    expect(tree.home.energy).toBeCloseTo(789.85, 2);
+  });
+
+  it("a missing source makes Home null, and with it every first-level share, Untracked and its share", () => {
+    const tree = buildEnergyTree(config, without(E.gridExport));
+    expect(tree.home.energy).toBeNull();
+    expect(findNode(tree, "casa").share).toBeNull();
+    expect(findNode(tree, "untracked").energy).toBeNull();
+    expect(findNode(tree, "untracked").share).toBeNull();
+    // Below the first level the parent is known, so shares still work.
+    expect(findNode(tree, "ac").share).toBeCloseTo(124.49 / 478.08, 4);
+  });
+
+  it.each(Object.keys(august2026Values()))("removing %s from the August values never puts NaN in the tree", (id) => {
+    const tree = buildEnergyTree(config, without(id));
+    expect(nanFields(tree)).toEqual([]);
+    const affected = allNodes(tree).filter((node) => node.energyEntity === id);
+    for (const node of affected) expect(node.energy).toBeNull();
+  });
+
+  it("NaN, infinite and null values are treated as missing and never reach the tree", () => {
+    const values: PeriodValues = {
+      ...august2026Values(),
+      [E.solar]: Number.NaN,
+      [E.ac]: Number.POSITIVE_INFINITY,
+      [E.casaCost]: Number.NaN,
+      [E.masina]: null,
+    };
+    const tree = buildEnergyTree(config, values);
+    expect(nanFields(tree)).toEqual([]);
+    expect(findNode(tree, "solar").energy).toBeNull();
+    expect(findNode(tree, "ac").energy).toBeNull();
+    expect(findNode(tree, "casa").cost).toBeNull();
+    expect(findNode(tree, "masina").energy).toBeNull();
+    expect(tree.home.energy).toBeNull();
+  });
+
+  it("empty values give null energy and cost on every node and no NaN", () => {
+    const tree = buildEnergyTree(config, {});
+    expect(nanFields(tree)).toEqual([]);
+    for (const node of allNodes(tree)) {
+      expect(node.energy).toBeNull();
+      expect(node.cost).toBeNull();
+      expect(node.share).toBeNull();
+    }
   });
 });

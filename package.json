@@ -10,6 +10,7 @@
     "url": "https://github.com/ZaBug/energy-tree-card.git"
   },
   "scripts": {
+    "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>energy-tree-card dev harness</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --primary-background-color: #111111;
+        --secondary-background-color: #202020;
+        --ha-card-background: #1c1c1c;
+        --card-background-color: #1c1c1c;
+        --primary-text-color: #e1e1e1;
+        --secondary-text-color: #9b9b9b;
+        --disabled-text-color: #6f6f6f;
+        --divider-color: rgba(225, 225, 225, 0.12);
+        --primary-color: #03a9f4;
+        --error-color: #db4437;
+        --ha-card-border-radius: 12px;
+        --energy-solar-color: #ff9800;
+        --energy-grid-consumption-color: #488fc2;
+        --energy-grid-return-color: #8353d1;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--primary-background-color);
+        color: var(--primary-text-color);
+        font-family: Roboto, "Segoe UI", system-ui, sans-serif;
+        font-size: 14px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .controls .group {
+        display: inline-flex;
+        gap: 4px;
+        margin-right: 12px;
+      }
+      .controls button {
+        padding: 6px 12px;
+        border: 1px solid var(--divider-color);
+        border-radius: 16px;
+        background: #1c1c1c;
+        color: var(--primary-text-color);
+        font: inherit;
+        cursor: pointer;
+      }
+      .controls button[aria-pressed="true"] {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+      }
+      .controls .info {
+        color: var(--secondary-text-color);
+        font-size: 12px;
+      }
+      .cards {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 24px;
+      }
+      .frame {
+        box-sizing: border-box;
+        padding: 8px;
+        outline: 1px dashed #333;
+      }
+      .frame .label {
+        margin: 0 0 6px;
+        color: var(--secondary-text-color);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <div class="group" id="periods"></div>
+      <div class="group" id="toggles"></div>
+      <span class="info" id="info"></span>
+    </div>
+    <div class="cards" id="cards"></div>
+    <script type="module" src="./harness.ts"></script>
+  </body>
+</html>

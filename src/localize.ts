@@ -16,6 +16,7 @@ const STRINGS = {
     layout_bars: "Bare",
     sources: "Surse",
     consumers: "Consumatori",
+    layout: "Aspect",
     error: "Statisticile nu au putut fi citite",
   },
   en: {
@@ -32,6 +33,7 @@ const STRINGS = {
     layout_bars: "Bars",
     sources: "Sources",
     consumers: "Consumers",
+    layout: "Layout",
     error: "Could not load statistics",
   },
 } as const;

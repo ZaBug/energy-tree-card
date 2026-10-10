@@ -1,6 +1,6 @@
 import { css } from "lit";
 
-/** Card frame: title, notes. */
+/** Card frame: header, layout toggle, notes. */
 export const cardStyles = css`
   :host {
     display: block;
@@ -28,6 +28,62 @@ export const cardStyles = css`
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .period {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--secondary-text-color, #727272);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header.no-title .period {
+    font-size: 14px;
+    line-height: 32px;
+    color: var(--primary-text-color, #212121);
+  }
+  .toggle {
+    flex: none;
+    display: inline-flex;
+    border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .toggle button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--secondary-text-color, #727272);
+    cursor: pointer;
+    font: inherit;
+    --mdc-icon-size: 18px;
+  }
+  .toggle button + button {
+    border-left: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+  }
+  .toggle button.active {
+    color: var(--primary-color, #03a9f4);
+  }
+  /* Tint in the current colour; opacity on a pseudo element keeps it theme-agnostic. */
+  .toggle button.active::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    opacity: 0.14;
+    pointer-events: none;
+  }
+  .toggle button:focus-visible {
+    outline: 2px solid var(--primary-color, #03a9f4);
+    outline-offset: -2px;
   }
   .content {
     padding: 8px 16px 16px;

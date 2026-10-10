@@ -11,10 +11,12 @@ import type {
   EnergyTree,
   EnergyTreeCardConfig,
   HomeAssistant,
+  Language,
   NormalizedConfig,
   PeriodValues,
 } from "./types";
 import { barsStyles, renderBars } from "./ui/bars";
+import { formatPeriod } from "./ui/format";
 import { countDescendants, createContext, subtreeDepth } from "./ui/node";
 import { cardStyles } from "./ui/styles";
 import { renderTree, treeStyles } from "./ui/tree-view";
@@ -57,6 +59,7 @@ export class EnergyTreeCard extends LitElement {
     _source: { state: true },
     _error: { state: true },
     _loading: { state: true },
+    _layoutOverride: { state: true },
     _narrow: { state: true },
     _wide: { state: true },
   };
@@ -70,6 +73,7 @@ export class EnergyTreeCard extends LitElement {
   private declare _source?: PeriodSource;
   private declare _error?: string;
   private declare _loading: boolean;
+  private declare _layoutOverride?: ShownLayout;
   private declare _narrow: boolean;
   private declare _wide: boolean;
 
@@ -122,10 +126,14 @@ export class EnergyTreeCard extends LitElement {
   setConfig(config: EnergyTreeCardConfig): void {
     // Throws on an invalid config; Home Assistant shows the message as an error card.
     let normalized = normalizeConfig(config, resolveLanguage(configLanguage(config), undefined));
+    const previous = this._normalized;
     this._config = config;
     if (this._hass) {
       const language = resolveLanguage(configLanguage(config), hassLanguage(this._hass));
       if (language !== normalized.language) normalized = normalizeConfig(config, language);
+    }
+    if (previous && (previous.layout !== normalized.layout || previous.narrow_width !== normalized.narrow_width)) {
+      this._layoutOverride = undefined;
     }
     this._setNormalized(normalized);
     this._generation += 1;
@@ -282,8 +290,13 @@ export class EnergyTreeCard extends LitElement {
   }
 
   private _layout(config: NormalizedConfig): ShownLayout {
+    if (this._layoutOverride) return this._layoutOverride;
     if (config.layout === "auto") return this._narrow ? "bars" : "tree";
     return config.layout;
+  }
+
+  private _setLayout(layout: ShownLayout): void {
+    this._layoutOverride = layout;
   }
 
   // ---------------------------------------------------------------------------
@@ -306,7 +319,7 @@ export class EnergyTreeCard extends LitElement {
 
     return html`
       <ha-card>
-        ${this._renderTitle(config)}
+        ${this._renderHeader(config, layout, ctx.locale)}
         <div class=${classMap({ content: true, stale: this._loading && !!this._tree })}>
           ${this._source === "fallback" ? html`<div class="note">${localize(language, "no_collection")}</div>` : nothing}
           ${this._error ? html`<div class="error" role="alert">${this._error}</div>` : nothing} ${body}
@@ -315,11 +328,39 @@ export class EnergyTreeCard extends LitElement {
     `;
   }
 
-  private _renderTitle(config: NormalizedConfig): TemplateResult | typeof nothing {
+  private _renderHeader(config: NormalizedConfig, layout: ShownLayout, locale: string): TemplateResult {
+    const period = this._period ? formatPeriod(this._period, locale) : "";
     const title = config.title?.trim() ? config.title : undefined;
-    return title ? html`<div class="header"><div class="title">${title}</div></div>` : nothing;
+    return html`
+      <div class=${classMap({ header: true, "no-title": !title })}>
+        <div class="titles">
+          ${title ? html`<div class="title">${title}</div>` : nothing}
+          ${period ? html`<div class="period">${period}</div>` : nothing}
+        </div>
+        <div class="toggle" role="group" aria-label=${localize(config.language, "layout")}>
+          ${this._toggleButton("tree", "mdi:file-tree-outline", layout, config.language)}
+          ${this._toggleButton("bars", "mdi:format-list-bulleted", layout, config.language)}
+        </div>
+      </div>
+    `;
   }
 
+  private _toggleButton(value: ShownLayout, icon: string, current: ShownLayout, language: Language): TemplateResult {
+    const label = localize(language, value === "tree" ? "layout_tree" : "layout_bars");
+    const active = value === current;
+    return html`
+      <button
+        type="button"
+        class=${classMap({ active })}
+        aria-label=${label}
+        title=${label}
+        aria-pressed=${active ? "true" : "false"}
+        @click=${() => this._setLayout(value)}
+      >
+        <ha-icon .icon=${icon}></ha-icon>
+      </button>
+    `;
+  }
 }
 
 if (!customElements.get(CARD_TYPE)) customElements.define(CARD_TYPE, EnergyTreeCard);

@@ -17,5 +17,7 @@ export default defineConfig({
     include: ["test/**/*.test.ts"],
     environment: "node",
     passWithNoTests: true,
+    // Date tests use local times; pin the zone so they behave the same on any machine and on CI (UTC).
+    env: { TZ: "Europe/Bucharest" },
   },
 });

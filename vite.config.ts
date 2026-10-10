@@ -12,6 +12,8 @@ export default defineConfig({
     emptyOutDir: true,
     target: "es2021",
     sourcemap: false,
+    // Library mode keeps whitespace by default; HACS serves this file as is, so minify fully.
+    rolldownOptions: { output: { minify: true } },
   },
   test: {
     include: ["test/**/*.test.ts"],

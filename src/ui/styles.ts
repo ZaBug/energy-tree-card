@@ -47,16 +47,17 @@ export const cardStyles = css`
     flex: none;
     display: inline-flex;
     border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
-    border-radius: 16px;
+    border-radius: 20px;
     overflow: hidden;
   }
+  /* 44 x 40 px: big enough to hit with a thumb on a phone. */
   .toggle button {
     position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 32px;
+    width: 44px;
+    height: 40px;
     margin: 0;
     padding: 0;
     border: 0;

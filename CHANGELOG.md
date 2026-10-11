@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.1 - 2026-10-11
+
+### Fixed
+
+- Layout toggle buttons are 44 x 40 px (were 40 x 32), easier to hit on a phone.
+- Bars layout: Home's bar is full, as the 100 % that the consumer bars refer
+  to (it was scaled against the largest source).
+- Tree layout: when the tree is wider than the card, the edges that hide nodes
+  fade out, so cut-off nodes no longer look like missing data.
+
 ## 0.1.0 - 2026-10-11
 
 ### Added

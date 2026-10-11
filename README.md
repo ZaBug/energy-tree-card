@@ -277,6 +277,8 @@ shown on the solar node only; it is not part of the Home cost.
   header switches the layout for the session; it does not change the config.
 - Bars: source bars compare the sources with each other; Home's bar is full
   and every consumer bar shows its share of the parent.
+- Tree: a tree wider than the card scrolls sideways, opens centred on Home,
+  and fades the edges that hide nodes.
 - `language` sets the built-in labels (default node names, layout toggle,
   notes). The default follows the Home Assistant user language and falls back
   to English. Node names from the config always win.

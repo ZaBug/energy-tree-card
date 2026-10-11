@@ -21,7 +21,7 @@ import {
 export function renderTree(tree: EnergyTree, ctx: RenderContext, wide = false): TemplateResult {
   const sourceLines = reservedLines(tree.sources);
   return html`
-    <div class="tree-scroll">
+    <div class="tree-scroll" @scroll=${onTreeScroll}>
       <div class=${classMap({ tree: true, wide })}>
         ${tree.sources.length > 0
           ? html`
@@ -55,6 +55,23 @@ function orgChildren(node: TreeNode, ctx: RenderContext): TemplateResult | typeo
       ${node.children.map((child) => html`<li>${circleNode(child, ctx, lines)} ${orgChildren(child, ctx)}</li>`)}
     </ul>
   `;
+}
+
+/**
+ * Marks the sides of a horizontally scrolled tree that hide nodes (data-more="left right"),
+ * so the CSS can fade those edges: without a hint, cut-off nodes look like missing data.
+ */
+export function updateScrollHints(scroller: HTMLElement): void {
+  const hidden: string[] = [];
+  if (scroller.scrollLeft > 1) hidden.push("left");
+  if (scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1) hidden.push("right");
+  const value = hidden.join(" ");
+  if (value) scroller.setAttribute("data-more", value);
+  else scroller.removeAttribute("data-more");
+}
+
+function onTreeScroll(event: Event): void {
+  updateScrollHints(event.currentTarget as HTMLElement);
 }
 
 /** Meta lines a row of sibling nodes reserves, so their names, costs and powers line up. */
@@ -101,6 +118,18 @@ export const treeStyles = css`
     margin: 0 -16px;
     padding: 4px 16px 4px;
     scrollbar-width: thin;
+  }
+  .tree-scroll[data-more="left"] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 40px);
+    mask-image: linear-gradient(to right, transparent, #000 40px);
+  }
+  .tree-scroll[data-more="right"] {
+    -webkit-mask-image: linear-gradient(to left, transparent, #000 40px);
+    mask-image: linear-gradient(to left, transparent, #000 40px);
+  }
+  .tree-scroll[data-more="left right"] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
   }
   .tree {
     --node-w: 92px;

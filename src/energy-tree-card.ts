@@ -19,7 +19,7 @@ import { barsStyles, renderBars } from "./ui/bars";
 import { formatPeriod } from "./ui/format";
 import { countDescendants, createContext, subtreeDepth } from "./ui/node";
 import { cardStyles } from "./ui/styles";
-import { renderTree, treeStyles } from "./ui/tree-view";
+import { renderTree, treeStyles, updateScrollHints } from "./ui/tree-view";
 import { VERSION } from "./version";
 
 const CARD_TYPE = "energy-tree-card";
@@ -183,6 +183,8 @@ export class EnergyTreeCard extends LitElement {
         if (width > 0) {
           this._width = width;
           this._updateWidthState();
+          const scroller = this.renderRoot.querySelector<HTMLElement>(".tree-scroll");
+          if (scroller) updateScrollHints(scroller);
         }
       });
       this._resizeObserver.observe(this);
@@ -218,12 +220,13 @@ export class EnergyTreeCard extends LitElement {
     const config = this._normalized;
     if (!config) return;
     const layout = this._tree ? this._layout(config) : undefined;
-    if (layout === "tree" && this._shownLayout !== "tree") {
+    const scroller = layout === "tree" ? this.renderRoot.querySelector<HTMLElement>(".tree-scroll") : null;
+    if (scroller) {
       // A tree wider than the card opens centred on Home instead of on its left edge.
-      const scroller = this.renderRoot.querySelector<HTMLElement>(".tree-scroll");
-      if (scroller && scroller.scrollWidth > scroller.clientWidth) {
+      if (this._shownLayout !== "tree" && scroller.scrollWidth > scroller.clientWidth) {
         scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
       }
+      updateScrollHints(scroller);
     }
     this._shownLayout = layout;
   }

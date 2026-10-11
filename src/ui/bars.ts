@@ -17,15 +17,17 @@ import {
 
 /**
  * Bars layout (phone): sources, then Home and the consumers as an indented tree.
- * Source and Home bars are relative to the largest of them; consumer bars show the share of the parent.
+ * Source bars are relative to the largest source. Home's bar is full: it is the 100 % that the
+ * consumer bars below it (share of the parent) refer to.
  * Line 2 is bar, live power, cost: the cost sits in the right column under the kWh.
  */
 export function renderBars(tree: EnergyTree, ctx: RenderContext): TemplateResult {
-  const energies = [...tree.sources, tree.home].map((node) =>
+  const energies = tree.sources.map((node) =>
     typeof node.energy === "number" && Number.isFinite(node.energy) ? node.energy : 0,
   );
   const max = Math.max(0, ...energies);
   const relative = (node: TreeNode): number => (max > 0 && node.energy !== null ? fraction(node.energy / max) : 0);
+  const homeWidth = tree.home.energy !== null && tree.home.energy > 0 ? 1 : 0;
 
   return html`
     <div class="bars">
@@ -36,7 +38,7 @@ export function renderBars(tree: EnergyTree, ctx: RenderContext): TemplateResult
             <div class="section-label consumers">${localize(ctx.language, "consumers")}</div>
           `
         : nothing}
-      <div class="branch">${barRow(tree.home, relative(tree.home), ctx)} ${childList(tree.home, ctx)}</div>
+      <div class="branch">${barRow(tree.home, homeWidth, ctx)} ${childList(tree.home, ctx)}</div>
     </div>
   `;
 }

@@ -60,6 +60,13 @@
         color: var(--secondary-text-color);
         font-size: 12px;
       }
+      .events {
+        min-height: 16px;
+        margin: -8px 0 16px;
+        color: var(--secondary-text-color);
+        font: 12px/16px ui-monospace, Consolas, monospace;
+        overflow-wrap: anywhere;
+      }
       .cards {
         display: flex;
         flex-wrap: wrap;
@@ -84,6 +91,7 @@
       <div class="group" id="toggles"></div>
       <span class="info" id="info"></span>
     </div>
+    <div class="events" id="events" aria-live="polite"></div>
     <div class="cards" id="cards"></div>
     <script type="module" src="./harness.ts"></script>
   </body>

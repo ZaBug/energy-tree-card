@@ -1,5 +1,7 @@
 // Local visual harness (not bundled): `npm run dev`, then open /dev/index.html.
-// Query parameters: ?width=1200 (wide card frame), ?narrow=400 (phone frame), ?picker=0 (no Energy date picker).
+// Query parameters: ?width=1200 (wide card frame), ?narrow=400 (phone frame), ?widths=360,400,926 (any frames),
+// ?layout=tree (config layout), ?period=an (azi, luna, aug, an), ?locale=en (number format), ?picker=0 (no date picker).
+// Taps that the Home Assistant frontend would handle (hass-action, hass-more-info) are logged under the controls.
 import "../src/energy-tree-card";
 import type {
   EnergyCollectionData,
@@ -237,6 +239,7 @@ const CONFIG: EnergyTreeCardConfig = {
       power: "sensor.duosida_mode3_32a_power",
       icon: "mdi:car-electric-outline",
       color: "#8e24aa",
+      tap_action: { action: "navigate", navigation_path: "/lovelace/cost-masina" },
     },
   ],
 };
@@ -247,8 +250,12 @@ const CONFIG: EnergyTreeCardConfig = {
 
 const params = new URLSearchParams(location.search);
 const withPicker = params.get("picker") !== "0";
+const layoutParam = params.get("layout");
+if (layoutParam === "tree" || layoutParam === "bars" || layoutParam === "auto") CONFIG.layout = layoutParam;
+const locale = params.get("locale") || "ro";
 
-let selected: PeriodKey = "aug";
+const periodParam = params.get("period");
+let selected: PeriodKey = periodParam && periodParam in FIXTURES ? (periodParam as PeriodKey) : "aug";
 /** Removes sensor.casuta_energy and makes sensor.casa_power unavailable. */
 let placeholders = false;
 /** Makes callWS reject. */
@@ -351,7 +358,7 @@ function makeHass(): HomeAssistant {
     states: buildStates(),
     connection,
     callWS,
-    locale: { language: "ro" },
+    locale: { language: locale },
     language: "ro",
     config: { currency: "RON", time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     panelUrl: "dev",
@@ -381,8 +388,12 @@ const cards: CardElement[] = [];
 const cardsEl = document.getElementById("cards") as HTMLElement;
 const narrowWidth = Number(params.get("narrow")) || 400;
 const wideWidth = Number(params.get("width")) || 1200;
+const widths = (params.get("widths") ?? "")
+  .split(",")
+  .map(Number)
+  .filter((width) => width > 0);
 
-for (const width of [narrowWidth, wideWidth]) {
+for (const width of widths.length > 0 ? widths : [narrowWidth, wideWidth]) {
   const frame = document.createElement("div");
   frame.className = "frame";
   frame.style.width = `${width}px`;
@@ -395,6 +406,19 @@ for (const width of [narrowWidth, wideWidth]) {
   frame.append(label, card);
   cardsEl.append(frame);
   cards.push(card);
+}
+
+// What the Home Assistant frontend would receive from a tap.
+const eventsEl = document.getElementById("events") as HTMLElement;
+for (const type of ["hass-action", "hass-more-info"]) {
+  document.addEventListener(type, (event) => {
+    const detail = (event as CustomEvent).detail as unknown;
+    console.info(`[harness] ${type}`, detail);
+    const line = document.createElement("div");
+    line.textContent = `${new Date().toLocaleTimeString()} ${type} ${JSON.stringify(detail)}`;
+    eventsEl.prepend(line);
+    while (eventsEl.childElementCount > 4) eventsEl.lastElementChild?.remove();
+  });
 }
 
 function pushHass(): void {

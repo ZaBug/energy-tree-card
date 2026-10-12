@@ -3,7 +3,8 @@ import type { EnergyTree, TreeNode } from "../types";
 // Tree layout sizes in px. Normal and wide match the stylesheet (tree-view.ts); compact is computed.
 export const NORMAL = { nodeWidth: 92, gapX: 4, circle: 72, homeCircle: 88 } as const;
 export const WIDE = { nodeWidth: 108, gapX: 10, circle: 76, homeCircle: 96 } as const;
-export const MIN_NODE_WIDTH = 56;
+/** 54 px: a 6-column tree fits the 334 px card of a 360 px phone; "Nemăsurat" (11 px) still fits. */
+export const MIN_NODE_WIDTH = 54;
 export const MIN_CIRCLE = 46;
 /** Horizontal padding of the tree area: normal and wide trees, compact trees. */
 export const TREE_PADDING = 16;
@@ -66,8 +67,8 @@ function preset(size: typeof NORMAL | typeof WIDE, wide: boolean): TreeSizing {
 /**
  * Sizes of the tree for the width available to it (tree area with the compact padding).
  * Wide (if asked for) or normal sizes when they fit with the normal padding; else compact: column
- * width = available / columns, at most the normal 92 px and at least 56 px, circle 10 px smaller
- * (46 to 72 px). Below 56 px per column the tree keeps 56 px and scrolls.
+ * width = available / columns, at most the normal 92 px and at least 54 px, circle 10 px smaller
+ * (46 to 72 px). Below 54 px per column the tree keeps 54 px and scrolls.
  * An unknown width (0, not measured yet) gives the normal sizes.
  */
 export function treeSizing(

@@ -365,8 +365,8 @@ parent's cost when every consumer pays the same average price.
   and every consumer bar shows its share of the parent.
 - Tree: when the tree does not fit the card at its normal size, it gets
   compact: the column width becomes the card width divided by the number of
-  leaf columns (at least 56 px), circles and fonts get smaller, and costs may
-  wrap onto two lines. Six leaf columns fit a 344 px card (a 360 px phone).
+  leaf columns (at least 54 px), circles and fonts get smaller, and costs may
+  wrap onto two lines. Six leaf columns fit a 334 px card (a 360 px phone).
   Only a tree that does not fit even then scrolls sideways; it opens centred on
   Home and fades the edges that hide nodes. Cards of 900 px or more spread the
   nodes a little.

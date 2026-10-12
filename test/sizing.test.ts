@@ -41,22 +41,24 @@ describe("treeSizing", () => {
     expect(sizing.homeCircle).toBe(64);
   });
 
-  it("6 columns at 336 px: compact at the minimum, still no scroll", () => {
-    const sizing = treeSizing(336, 6, { groups: 1, sources: 3 });
+  it("6 columns at 324 px: compact at the minimum, still no scroll", () => {
+    const sizing = treeSizing(324, 6, { groups: 1, sources: 3 });
     expect(sizing).toMatchObject({ compact: true, scroll: false, nodeWidth: MIN_NODE_WIDTH, circle: MIN_CIRCLE });
-    expect(compactWidth(6, sizing.nodeWidth)).toBeLessThanOrEqual(336);
+    expect(compactWidth(6, sizing.nodeWidth)).toBeLessThanOrEqual(324);
     expect(sizing.homeCircle).toBe(56);
   });
 
-  it("6 columns on the owner's phones (384 and 344 px cards: 378 and 338 px for the tree) fit", () => {
-    for (const available of [384 - 2 - 4, 344 - 2 - 4]) {
+  it("6 columns on the owner's phones fit (Home Assistant cards of 374 and 334 px on 400 and 360 px phones)", () => {
+    // Card width minus the 2 × 1 px border and the 2 × 2 px compact padding.
+    for (const available of [374 - 2 - 4, 334 - 2 - 4]) {
       const sizing = treeSizing(available, 6, { groups: 1, sources: 3 });
       expect(sizing.scroll).toBe(false);
       expect(compactWidth(6, sizing.nodeWidth)).toBeLessThanOrEqual(available);
     }
   });
 
-  it("10 columns at 336 px: minimum sizes and scroll", () => {
+  it("6 columns at 323 px and 10 columns at 336 px: minimum sizes and scroll", () => {
+    expect(treeSizing(323, 6)).toMatchObject({ compact: true, scroll: true, nodeWidth: MIN_NODE_WIDTH });
     expect(treeSizing(336, 10)).toMatchObject({
       compact: true,
       scroll: true,

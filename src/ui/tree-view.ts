@@ -1,6 +1,7 @@
 import { css, html, nothing, type TemplateResult } from "lit";
 import { classMap } from "lit/directives/class-map.js";
 import { ifDefined } from "lit/directives/if-defined.js";
+import { styleMap } from "lit/directives/style-map.js";
 import { localize } from "../localize";
 import type { EnergyTree, TreeNode } from "../types";
 import {
@@ -8,6 +9,7 @@ import {
   energyValue,
   isExplained,
   isMuted,
+  nodeColor,
   nodeColorStyle,
   onNodeClick,
   onNodeKey,
@@ -17,19 +19,30 @@ import {
   tapAttributes,
   type RenderContext,
 } from "./node";
+import { leafCount, treeSizing, type TreeSizing } from "./sizing";
 
 /**
  * Tree layout (desktop): source circles in a row joined to Home, then the consumers as an
  * org chart under Home. Connectors are CSS borders on the list items, so any depth and any
- * number of children work without measuring the DOM. Wider than the card: scrolls horizontally.
- * `wide` (card of 900 px or more) spreads the nodes a little.
+ * number of children work without measuring the DOM.
+ * `sizing` (see treeSizing): wide spreads the nodes a little on big cards, compact shrinks nodes and
+ * fonts so that the tree fits a phone; a tree that still does not fit scrolls horizontally.
  * Every node (circle and labels) is a button; an open explanation shows in a strip under the tree.
  */
-export function renderTree(tree: EnergyTree, ctx: RenderContext, wide = false): TemplateResult {
+export function renderTree(tree: EnergyTree, ctx: RenderContext, sizing: TreeSizing = treeSizing(0, 1)): TemplateResult {
   const sourceLines = reservedLines(tree.sources);
+  const sizes = sizing.compact
+    ? {
+        "--node-w": `${sizing.nodeWidth}px`,
+        "--row-node-w": `${sizing.rowNodeWidth}px`,
+        "--circle": `${sizing.circle}px`,
+        "--home-circle": `${sizing.homeCircle}px`,
+        "--gap-x": `${sizing.gapX}px`,
+      }
+    : {};
   return html`
-    <div class="tree-scroll" @scroll=${onTreeScroll}>
-      <div class=${classMap({ tree: true, wide })}>
+    <div class="tree-scroll" style=${styleMap({ "--tree-pad": `${sizing.padding}px` })} @scroll=${onTreeScroll}>
+      <div class=${classMap({ tree: true, wide: sizing.wide, compact: sizing.compact })} style=${styleMap(sizes)}>
         ${tree.sources.length > 0
           ? html`
               <div class="sources">
@@ -129,8 +142,10 @@ function circleNode(node: TreeNode, ctx: RenderContext, lines: ReservedLines): T
   const cost = costValue(node, ctx);
   const power = powerValue(node, ctx);
   const tap = tapAttributes(node, ctx);
+  const parent = node.children.length > 0;
   const classes = {
     tnode: true,
+    parent,
     home: node.kind === "home",
     muted: isMuted(node),
     explained: isExplained(node, ctx),
@@ -140,7 +155,9 @@ function circleNode(node: TreeNode, ctx: RenderContext, lines: ReservedLines): T
   return html`
     <div
       class=${classMap(classes)}
-      style=${nodeColorStyle(node)}
+      style=${styleMap(
+        parent ? { "--node-color": nodeColor(node), "--span": String(leafCount(node)) } : { "--node-color": nodeColor(node) },
+      )}
       role=${ifDefined(tap.role)}
       tabindex=${ifDefined(tap.tabindex)}
       data-node=${node.id}
@@ -159,10 +176,15 @@ function circleNode(node: TreeNode, ctx: RenderContext, lines: ReservedLines): T
             `}
       </div>
       <div class="tname" title=${node.name}>${node.name}</div>
-      ${lines.cost ? html`<div class="tmeta">${cost === undefined ? nothing : shown(cost, ctx)}</div>` : nothing}
+      ${lines.cost ? html`<div class="tmeta">${cost === undefined ? nothing : shown(breakable(cost), ctx)}</div>` : nothing}
       ${lines.power ? html`<div class="tmeta">${power === undefined ? nothing : shown(power, ctx)}</div>` : nothing}
     </div>
   `;
+}
+
+/** A normal space between the number and the currency: compact trees may wrap "1,040.83 RON" onto two lines. */
+function breakable(text: string | null): string | null {
+  return text === null ? null : text.replace(String.fromCharCode(0xa0), " ");
 }
 
 /** Tree layout: circles on levels with org-chart connectors. */
@@ -171,7 +193,7 @@ export const treeStyles = css`
     overflow-x: auto;
     overflow-y: hidden;
     margin: 0 -16px;
-    padding: 4px 16px 4px;
+    padding: 4px var(--tree-pad, 16px) 4px;
     scrollbar-width: thin;
   }
   .tree-scroll[data-more="left"] {
@@ -205,6 +227,10 @@ export const treeStyles = css`
     --circle: 76px;
     --level-gap: 18px;
   }
+  /* Compact (narrow cards): sizes come from treeSizing as inline custom properties. */
+  .tree.compact {
+    --level-gap: 10px;
+  }
   .tnode {
     position: relative;
     box-sizing: border-box;
@@ -219,9 +245,10 @@ export const treeStyles = css`
     outline: none;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Inside the node, so that the scroller never clips it. */
   .tnode:focus-visible {
     outline: 2px solid var(--primary-color, #03a9f4);
-    outline-offset: 1px;
+    outline-offset: -2px;
   }
   .circle {
     position: relative;
@@ -315,6 +342,63 @@ export const treeStyles = css`
   .tnode.muted .circle .kwh {
     color: var(--secondary-text-color, #727272);
   }
+  /* Compact fonts: never below 10 px, except the kWh unit (9 px). */
+  .tree.compact .tnode {
+    padding: 0 1px 3px;
+  }
+  .tree.compact .src > .tnode,
+  .tree.compact .tnode.home {
+    width: var(--row-node-w, var(--node-w));
+  }
+  /* A parent sits over its children's columns: it may be wider than one column (up to a source node). */
+  .tree.compact .org .tnode.parent {
+    width: auto;
+    min-width: var(--node-w);
+    max-width: min(var(--row-node-w, var(--node-w)), calc(var(--node-w) * var(--span, 1)));
+  }
+  .tree.compact .tnode.home {
+    --circle: var(--home-circle, 56px);
+  }
+  .tree.compact .circle ha-icon {
+    --mdc-icon-size: 16px;
+    margin-bottom: 0;
+  }
+  .tree.compact .circle .kwh {
+    font-size: 11px;
+    line-height: 12px;
+  }
+  .tree.compact .circle .kwh.long,
+  .tree.compact .circle .kwh.xlong {
+    font-size: 10px;
+  }
+  .tree.compact .circle .unit {
+    font-size: 9px;
+    line-height: 9px;
+  }
+  .tree.compact .tname {
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 15px;
+    letter-spacing: -0.01em;
+  }
+  .tree.compact .tmeta {
+    min-height: 14px;
+    font-size: 10.5px;
+    line-height: 13px;
+    white-space: normal;
+    overflow: visible;
+  }
+  .tree.compact .tnode.home .circle ha-icon {
+    --mdc-icon-size: 18px;
+  }
+  .tree.compact .tnode.home .circle .kwh {
+    font-size: 13px;
+    line-height: 15px;
+  }
+  .tree.compact .tnode.home .tname {
+    font-size: 12px;
+  }
+
   /* Hover / pressed / explained: a stronger fill of the circle (after the muted rule, same specificity). */
   @media (hover: hover) {
     .tnode:hover .circle::before {

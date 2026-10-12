@@ -21,6 +21,7 @@ import { explainNode, findTreeNode } from "./ui/explain";
 import { formatPeriod } from "./ui/format";
 import { countDescendants, createContext, subtreeDepth, type RenderContext } from "./ui/node";
 import { cardStyles } from "./ui/styles";
+import { COMPACT_PADDING, treeShape, treeSizing } from "./ui/sizing";
 import { resolveTap } from "./ui/tap";
 import { renderTree, treeStyles, updateScrollHints } from "./ui/tree-view";
 import { VERSION } from "./version";
@@ -66,6 +67,7 @@ export class EnergyTreeCard extends LitElement {
     _narrow: { state: true },
     _wide: { state: true },
     _explained: { state: true },
+    _treeWidth: { state: true },
   };
 
   static override styles = [cardStyles, barsStyles, treeStyles];
@@ -82,6 +84,8 @@ export class EnergyTreeCard extends LitElement {
   private declare _wide: boolean;
   /** Id of the node whose explanation is open. */
   private declare _explained?: string;
+  /** Width available to the tree (card inside width minus the compact padding); 0 until measured. */
+  private declare _treeWidth: number;
 
   private _hass?: HomeAssistant;
   private _config?: EnergyTreeCardConfig;
@@ -104,6 +108,7 @@ export class EnergyTreeCard extends LitElement {
     this._loading = false;
     this._narrow = false;
     this._wide = false;
+    this._treeWidth = 0;
   }
 
   // ---------------------------------------------------------------------------
@@ -190,6 +195,7 @@ export class EnergyTreeCard extends LitElement {
         if (width > 0) {
           this._width = width;
           this._updateWidthState();
+          this._measureTreeWidth();
           const scroller = this.renderRoot.querySelector<HTMLElement>(".tree-scroll");
           if (scroller) updateScrollHints(scroller);
         }
@@ -308,6 +314,14 @@ export class EnergyTreeCard extends LitElement {
     if (wide !== this._wide) this._wide = wide;
   }
 
+  /** The tree area spans the inside of ha-card (the content padding is cancelled by the tree's margin). */
+  private _measureTreeWidth(): void {
+    const card = this.renderRoot.querySelector<HTMLElement>("ha-card");
+    const inside = card && card.clientWidth > 0 ? card.clientWidth : this._width;
+    const treeWidth = Math.max(0, Math.floor(inside - 2 * COMPACT_PADDING));
+    if (treeWidth !== this._treeWidth) this._treeWidth = treeWidth;
+  }
+
   private _layout(config: NormalizedConfig): ShownLayout {
     if (this._layoutOverride) return this._layoutOverride;
     if (config.layout === "auto") return this._narrow ? "bars" : "tree";
@@ -371,7 +385,16 @@ export class EnergyTreeCard extends LitElement {
 
     let body: TemplateResult | typeof nothing = nothing;
     if (this._tree) {
-      body = layout === "bars" ? renderBars(this._tree, ctx) : renderTree(this._tree, ctx, this._wide);
+      if (layout === "bars") body = renderBars(this._tree, ctx);
+      else {
+        const shape = treeShape(this._tree);
+        const sizing = treeSizing(this._treeWidth, shape.columns, {
+          groups: shape.groups,
+          sources: shape.sources,
+          wide: this._wide,
+        });
+        body = renderTree(this._tree, ctx, sizing);
+      }
     } else if (!this._error) {
       body = html`<div class="loading">${localize(language, "loading")}</div>`;
     }

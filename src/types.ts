@@ -192,6 +192,8 @@ export interface TreeNode {
   power?: string;
   /** Statistic id of the energy sensor (undefined for derived nodes). */
   energyEntity?: string;
+  /** Statistic id of the cost sensor (undefined for derived nodes and nodes without cost). */
+  costEntity?: string;
   /** Home = 0, first-level consumers = 1, their children = 2, ... Sources = 0. */
   depth: number;
   /** energy / parent energy, clamped to 0..1; null for sources, home or unknown values. */

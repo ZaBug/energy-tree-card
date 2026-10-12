@@ -18,6 +18,14 @@ const STRINGS = {
     consumers: "Consumatori",
     layout: "Aspect",
     error: "Statisticile nu au putut fi citite",
+    explain_missing: "{entity} nu există și nu are statistici",
+    explain_unavailable: "{what}: indisponibil",
+    explain_below_zero: "sub 0, afișat 0",
+    explain_exceeds: "Consumatorii măsurați depășesc {parent} cu {value} kWh, afișat 0",
+    explain_average_cost: "Cost la prețul mediu {parent}: {price}/kWh × {energy} kWh = {cost}",
+    explain_no_parent_cost: "Cost: costul {parent} nu este disponibil",
+    explain_from_statistics: "{value} din statisticile {entity}",
+    explain_close: "Închide explicația",
   },
   en: {
     solar: "Solar",
@@ -35,6 +43,14 @@ const STRINGS = {
     consumers: "Consumers",
     layout: "Layout",
     error: "Could not load statistics",
+    explain_missing: "{entity} does not exist and has no statistics",
+    explain_unavailable: "{what}: unavailable",
+    explain_below_zero: "below 0, shown as 0",
+    explain_exceeds: "The measured consumers exceed {parent} by {value} kWh, shown as 0",
+    explain_average_cost: "Cost at the average price of {parent}: {price}/kWh × {energy} kWh = {cost}",
+    explain_no_parent_cost: "Cost: the cost of {parent} is not available",
+    explain_from_statistics: "{value} from the statistics of {entity}",
+    explain_close: "Close explanation",
   },
 } as const;
 
@@ -45,6 +61,11 @@ export function resolveLanguage(configured: string | undefined, hassLanguage: st
   return lang.startsWith("ro") ? "ro" : "en";
 }
 
-export function localize(language: Language, key: StringKey): string {
-  return STRINGS[language][key];
+/** Built-in label; `{name}` placeholders are replaced by `vars.name`. */
+export function localize(language: Language, key: StringKey, vars?: Record<string, string>): string {
+  let text: string = STRINGS[language][key];
+  if (vars) {
+    for (const [name, value] of Object.entries(vars)) text = text.split(`{${name}}`).join(value);
+  }
+  return text;
 }

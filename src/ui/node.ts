@@ -3,6 +3,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import { localize } from "../localize";
 import type { EnergyTree, HomeAssistant, Language, NodeKind, NormalizedConfig, TreeNode } from "../types";
 import { PLACEHOLDER, formatCost, formatNumber, formatPower } from "./format";
+import { resolveTap } from "./tap";
 
 /** Theme colour per node kind when the config sets none. */
 const DEFAULT_COLORS: Record<NodeKind, string> = {
@@ -27,6 +28,21 @@ export interface RenderContext {
   /** Some node shows a cost / a live power: bar rows reserve the column so values line up. */
   anyCost: boolean;
   anyPower: boolean;
+  /** Tap handling and the open explanation; set by the card. */
+  interaction?: Interaction;
+}
+
+/** The node whose explanation is open, with the lines to show. */
+export interface OpenExplanation {
+  node: TreeNode;
+  lines: string[];
+}
+
+export interface Interaction {
+  explained?: OpenExplanation;
+  /** A node was tapped, clicked, or activated with Enter / Space. */
+  activate(node: TreeNode): void;
+  closeExplanation(): void;
 }
 
 function someNode(node: TreeNode, test: (node: TreeNode) => boolean): boolean {
@@ -88,6 +104,35 @@ export function placeholder(ctx: RenderContext): TemplateResult {
 /** A formatted value, or the placeholder when it is null. */
 export function shown(value: string | null, ctx: RenderContext): TemplateResult | string {
   return value === null ? placeholder(ctx) : value;
+}
+
+/** True when the explanation of this node is open. */
+export function isExplained(node: TreeNode, ctx: RenderContext): boolean {
+  return ctx.interaction?.explained?.node.id === node.id;
+}
+
+/** `aria-expanded` for nodes whose tap toggles the explanation; absent for nodes that run an action. */
+export function ariaExpanded(node: TreeNode, ctx: RenderContext): "true" | "false" | undefined {
+  return resolveTap(node).type === "explain" ? (isExplained(node, ctx) ? "true" : "false") : undefined;
+}
+
+/** Click handler of a node. */
+export function onNodeClick(node: TreeNode, ctx: RenderContext): () => void {
+  return () => ctx.interaction?.activate(node);
+}
+
+/** Keyboard activation like a native button: Enter on keydown, Space on keyup (keydown only stops the scroll). */
+export function onNodeKey(node: TreeNode, ctx: RenderContext): (event: KeyboardEvent) => void {
+  return (event: KeyboardEvent) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.type === "keydown" && event.key === "Enter" && !event.repeat) {
+      event.preventDefault();
+      ctx.interaction?.activate(node);
+    } else if (event.key === " " || event.key === "Spacebar") {
+      event.preventDefault();
+      if (event.type === "keyup") ctx.interaction?.activate(node);
+    }
+  };
 }
 
 /** Fraction clamped to 0..1; 0 for anything that is not a finite number. */

@@ -14,11 +14,14 @@ import type {
   Language,
   NormalizedConfig,
   PeriodValues,
+  TreeNode,
 } from "./types";
 import { barsStyles, renderBars } from "./ui/bars";
+import { explainNode, findTreeNode } from "./ui/explain";
 import { formatPeriod } from "./ui/format";
-import { countDescendants, createContext, subtreeDepth } from "./ui/node";
+import { countDescendants, createContext, subtreeDepth, type RenderContext } from "./ui/node";
 import { cardStyles } from "./ui/styles";
+import { resolveTap } from "./ui/tap";
 import { renderTree, treeStyles, updateScrollHints } from "./ui/tree-view";
 import { VERSION } from "./version";
 
@@ -62,6 +65,7 @@ export class EnergyTreeCard extends LitElement {
     _layoutOverride: { state: true },
     _narrow: { state: true },
     _wide: { state: true },
+    _explained: { state: true },
   };
 
   static override styles = [cardStyles, barsStyles, treeStyles];
@@ -76,6 +80,8 @@ export class EnergyTreeCard extends LitElement {
   private declare _layoutOverride?: ShownLayout;
   private declare _narrow: boolean;
   private declare _wide: boolean;
+  /** Id of the node whose explanation is open. */
+  private declare _explained?: string;
 
   private _hass?: HomeAssistant;
   private _config?: EnergyTreeCardConfig;
@@ -135,6 +141,7 @@ export class EnergyTreeCard extends LitElement {
     if (previous && (previous.layout !== normalized.layout || previous.narrow_width !== normalized.narrow_width)) {
       this._layoutOverride = undefined;
     }
+    this._explained = undefined;
     this._setNormalized(normalized);
     this._generation += 1;
     this._tree = undefined;
@@ -213,6 +220,15 @@ export class EnergyTreeCard extends LitElement {
       return true;
     }
     return this._powerIds.some((id) => old.states?.[id] !== hass.states?.[id]);
+  }
+
+  /** The explanation follows the tree: it closes when its node is gone or no longer explains on tap. */
+  protected override willUpdate(changed: PropertyValues): void {
+    super.willUpdate(changed);
+    if (this._explained === undefined || !this._tree) return;
+    if (!changed.has("_tree") && !changed.has("_explained")) return;
+    const node = findTreeNode(this._tree, this._explained);
+    if (!node || resolveTap(node).type !== "explain") this._explained = undefined;
   }
 
   protected override updated(changed: PropertyValues): void {
@@ -303,6 +319,45 @@ export class EnergyTreeCard extends LitElement {
   }
 
   // ---------------------------------------------------------------------------
+  // Tap
+  // ---------------------------------------------------------------------------
+
+  private _activate(node: TreeNode): void {
+    const tap = resolveTap(node);
+    if (tap.type === "explain") {
+      this._explained = this._explained === node.id ? undefined : node.id;
+    } else if (tap.type === "action") {
+      // Handled by the Home Assistant frontend (more-info, navigate, url, perform-action, confirmation).
+      this.dispatchEvent(new CustomEvent("hass-action", { detail: tap.detail, bubbles: true, composed: true }));
+    }
+  }
+
+  private async _closeExplanation(): Promise<void> {
+    const id = this._explained;
+    this._explained = undefined;
+    if (id === undefined) return;
+    await this.updateComplete;
+    // Back to the node that opened it, so keyboard users keep their place.
+    const nodes = this.renderRoot.querySelectorAll<HTMLElement>("[data-node]");
+    for (const element of nodes) {
+      if (element.dataset.node === id) {
+        element.focus();
+        break;
+      }
+    }
+  }
+
+  private _interaction(ctx: RenderContext): void {
+    const tree = this._tree;
+    const node = tree && this._explained !== undefined ? findTreeNode(tree, this._explained) : undefined;
+    ctx.interaction = {
+      explained: tree && node ? { node, lines: explainNode(node, tree, ctx) } : undefined,
+      activate: (target) => this._activate(target),
+      closeExplanation: () => void this._closeExplanation(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // Rendering
   // ---------------------------------------------------------------------------
 
@@ -312,6 +367,7 @@ export class EnergyTreeCard extends LitElement {
     const language = config.language;
     const layout = this._layout(config);
     const ctx = createContext(this._hass, config, this._tree);
+    this._interaction(ctx);
 
     let body: TemplateResult | typeof nothing = nothing;
     if (this._tree) {

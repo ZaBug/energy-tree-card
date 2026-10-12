@@ -65,6 +65,7 @@ interface NodeInit {
   hasCost: boolean;
   power?: string;
   energyEntity?: string;
+  costEntity?: string;
   depth: number;
   share: number | null;
 }
@@ -86,6 +87,7 @@ function makeNode(init: NodeInit): TreeNode {
   if (init.color !== undefined) node.color = init.color;
   if (init.power !== undefined) node.power = init.power;
   if (init.energyEntity !== undefined) node.energyEntity = init.energyEntity;
+  if (init.costEntity !== undefined) node.costEntity = init.costEntity;
   return node;
 }
 
@@ -115,6 +117,7 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
       hasCost: !!source.cost,
       power: source.power,
       energyEntity: source.energy,
+      costEntity: source.cost,
       depth: 0,
       share: null,
     });
@@ -181,6 +184,7 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
         hasCost: !!consumer.cost,
         power: consumer.power,
         energyEntity: consumer.energy,
+        costEntity: consumer.cost,
         depth: parent.depth + 1,
         share: energyShare(energy, parent.energy),
       });

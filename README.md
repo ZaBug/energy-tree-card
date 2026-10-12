@@ -247,11 +247,17 @@ sensors.
 | Node | Energy | Cost |
 |---|---|---|
 | Home | solar + grid import − grid export, never below 0 | grid import cost − grid export compensation; only when grid import has `cost` and grid export has `cost` or is not configured |
-| Rest (for each node with children) | parent − sum of its children, never below 0 | parent cost − sum of the children's costs, when the parent and all its children have a cost. Not clamped, can be negative |
-| Untracked (last child of Home) | Home − sum of the first-level consumers, never below 0 | Home cost − sum of the first-level consumers' costs, when Home and all of them have a cost. Not clamped, can be negative |
+| Rest (for each node with children) | parent − sum of its children, never below 0 | Rest energy × the parent's average price (parent cost / parent energy), when the parent has a cost |
+| Untracked (last child of Home) | Home − sum of the first-level consumers, never below 0 | Untracked energy × Home's average price (Home cost / Home energy), when Home has a cost |
 
 Rest is added as the last child of its parent. A `cost` on the solar source is
 shown on the solar node only; it is not part of the Home cost.
+
+Rest and Untracked costs follow their energy, not the siblings' costs: when a
+consumer's cost statistics miss part of the range, the gap stays visible on
+that consumer (its cost looks too low for its kWh) instead of turning up as
+money on Untracked. As a consequence the children's costs only add up to the
+parent's cost when every consumer pays the same average price.
 
 ### Costs
 
@@ -351,7 +357,7 @@ nodes:
 Casa has two children, AC and Server, so the card adds *Rest Casa* (Casa minus
 AC and Server). Under Home (*Consum total* = Solar + Import rețea − Export
 rețea) the card adds *Nemăsurat*, the consumption not covered by Casa, Căsuță
-and Mașină. All nodes have a cost, so Rest Casa and Nemăsurat get one too.
+and Mașină. Casa and Home have a cost, so Rest Casa and Nemăsurat get one too.
 
 ```
 Solar   Import rețea   Export rețea

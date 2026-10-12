@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  averagePriceCost,
   buildEnergyTree,
-  differenceCost,
   energyShare,
   homeEnergy,
   periodValue,
@@ -157,19 +157,26 @@ describe("remainderEnergy", () => {
   });
 });
 
-describe("differenceCost", () => {
-  it("is total - sum of the parts", () => {
-    expect(differenceCost(47, [12.24, 0])).toBeCloseTo(34.76, 10);
+describe("averagePriceCost", () => {
+  it("is energy × parent cost / parent energy", () => {
+    expect(averagePriceCost(353.59, 478.08, 47)).toBeCloseTo(34.76, 2);
+    expect(averagePriceCost(40, 300, -15)).toBeCloseTo(-2, 10);
   });
 
-  it("is not clamped: parts larger than the total give a negative value", () => {
-    expect(differenceCost(5, [4, 3])).toBe(-2);
-    expect(differenceCost(-0.72, [0.5, 0.1])).toBeCloseTo(-1.32, 10);
+  it("is 0 when the energy is 0, even with a parent energy of 0", () => {
+    expect(averagePriceCost(0, 300, -15)).toBe(0);
+    expect(averagePriceCost(0, 0, 5)).toBe(0);
   });
 
-  it("is null when the total or any part is null", () => {
-    expect(differenceCost(null, [1])).toBeNull();
-    expect(differenceCost(10, [1, null])).toBeNull();
+  it("is null when the parent energy is not positive and the energy is not 0", () => {
+    expect(averagePriceCost(5, 0, 10)).toBeNull();
+    expect(averagePriceCost(5, -1, 10)).toBeNull();
+  });
+
+  it("is null when any value is null", () => {
+    expect(averagePriceCost(null, 10, 1)).toBeNull();
+    expect(averagePriceCost(1, null, 1)).toBeNull();
+    expect(averagePriceCost(1, 10, null)).toBeNull();
   });
 });
 
@@ -574,7 +581,7 @@ describe("buildEnergyTree: owner's August 2026 totals", () => {
     expect(findNode(tree, "grid_export").cost).toBeCloseTo(-272.44, 2);
   });
 
-  it("Rest Casa = 478.08 - 124.49 - 0.00 = 353.59 kWh and 47.00 - 12.24 - 0.00 = 34.76 RON", () => {
+  it("Rest Casa = 478.08 - 124.49 - 0.00 = 353.59 kWh and 353.59 × 47.00 / 478.08 = 34.76 RON", () => {
     const rest = findNode(tree, "rest:casa");
     expect(rest.energy).toBeCloseTo(353.59, 2);
     expect(rest.cost).toBeCloseTo(34.76, 2);
@@ -582,11 +589,11 @@ describe("buildEnergyTree: owner's August 2026 totals", () => {
     expect(rest.share).toBeCloseTo(353.59 / 478.08, 4);
   });
 
-  it("Nemăsurat = 789.85 - 793.13 clamped to 0 kWh, while its cost 77.98 - 77.97 = 0.01 RON is not clamped", () => {
+  it("Nemăsurat = 789.85 - 793.13 clamped to 0 kWh, so its cost is 0", () => {
     const untracked = findNode(tree, "untracked");
     expect(untracked.energy).toBe(0);
     expect(untracked.share).toBe(0);
-    expect(untracked.cost).toBeCloseTo(0.01, 2);
+    expect(untracked.cost).toBe(0);
     expect(untracked.hasCost).toBe(true);
   });
 

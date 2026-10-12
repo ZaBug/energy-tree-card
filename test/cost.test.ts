@@ -39,8 +39,9 @@ function sourceTree(setup: SourceSetup, overrides: PeriodValues = {}) {
  * The owner's config in a month with more export than import: the net bill is negative
  * and so are the consumers' monthly shares.
  *   Home: 20.00 - 35.00 = -15.00 RON
- *   Casa -0.72 (AC -0.19, Server -0.08, Rest Casa -0.45), Căsuță -0.05, Mașină -14.00
- *   Nemăsurat: -15.00 - (-0.72 - 0.05 - 14.00) = -0.23
+ *   Casa -0.72 (AC -0.19, Server -0.08), Căsuță -0.05, Mașină -14.00
+ *   Rest Casa: 90 kWh at Casa's average price: -0.72 × 90 / 150 = -0.432
+ *   Nemăsurat: 40 kWh at Home's average price: -15.00 × 40 / 300 = -2.00
  */
 function negativeMonthValues(overrides: PeriodValues = {}): PeriodValues {
   return {
@@ -222,32 +223,29 @@ describe("consumer costs", () => {
 });
 
 describe("Rest cost", () => {
-  it("Rest cost = parent cost - sum of the children's costs (-0.72 - (-0.19 - 0.08) = -0.45)", () => {
+  it("Rest cost = Rest energy at the parent's average price (-0.72 × 90 / 150 = -0.432)", () => {
     const rest = findNode(buildEnergyTree(ownerConfig(), negativeMonthValues()), "rest:casa");
     expect(rest.hasCost).toBe(true);
-    expect(rest.cost).toBeCloseTo(-0.45, 10);
+    expect(rest.cost).toBeCloseTo(-0.432, 10);
     expect(rest.energy).toBe(90);
   });
 
-  it("Rest cost is not clamped: children costing more than the parent give a negative Rest cost", () => {
-    const tree = buildEnergyTree(
-      ownerConfig(),
-      negativeMonthValues({ [E.casaCost]: 1.0, [E.acCost]: 0.8, [E.serverCost]: 0.4 }),
-    );
-    expect(findNode(tree, "rest:casa").cost).toBeCloseTo(-0.2, 10);
+  it("Rest cost does not depend on the children's costs: a gap in a child's cost stays in that child", () => {
+    const tree = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.acCost]: 5 }));
+    expect(findNode(tree, "rest:casa").cost).toBeCloseTo(-0.432, 10);
   });
 
-  it("Rest cost is not clamped even when Rest energy is clamped to 0", () => {
+  it("Rest cost is 0 when Rest energy is clamped to 0", () => {
     const tree = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.ac]: 200 }));
     const rest = findNode(tree, "rest:casa");
     expect(rest.energy).toBe(0);
-    expect(rest.cost).toBeCloseTo(-0.45, 10);
+    expect(rest.cost).toBe(0);
   });
 
-  it("Rest has no cost when a child has no cost sensor", () => {
+  it("Rest keeps its cost when a child has no cost sensor", () => {
     const tree = buildEnergyTree(makeConfig(ownerWithoutCost("server"), "ro"), negativeMonthValues());
-    expect(findNode(tree, "rest:casa")).toMatchObject({ hasCost: false, cost: null });
-    expect(findNode(tree, "rest:casa").energy).toBe(90);
+    expect(findNode(tree, "rest:casa")).toMatchObject({ hasCost: true, energy: 90 });
+    expect(findNode(tree, "rest:casa").cost).toBeCloseTo(-0.432, 10);
   });
 
   it("Rest has no cost when the parent has no cost sensor", () => {
@@ -255,28 +253,32 @@ describe("Rest cost", () => {
     expect(findNode(tree, "rest:casa")).toMatchObject({ hasCost: false, cost: null });
   });
 
-  it("Rest cost is null (hasCost true) when a child's or the parent's cost has no value", () => {
-    const childMissing = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.acCost]: null }));
-    expect(findNode(childMissing, "rest:casa")).toMatchObject({ hasCost: true, cost: null });
+  it("Rest cost is null (hasCost true) when the parent's cost or energy has no value", () => {
+    const costMissing = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.casaCost]: null }));
+    expect(findNode(costMissing, "rest:casa")).toMatchObject({ hasCost: true, cost: null });
 
-    const parentMissing = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.casaCost]: null }));
-    expect(findNode(parentMissing, "rest:casa")).toMatchObject({ hasCost: true, cost: null });
+    const energyMissing = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.casa]: null }));
+    expect(findNode(energyMissing, "rest:casa")).toMatchObject({ hasCost: true, cost: null });
+  });
+
+  it("a child's cost without a value leaves the Rest cost unchanged", () => {
+    const tree = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.acCost]: null }));
+    expect(findNode(tree, "rest:casa").cost).toBeCloseTo(-0.432, 10);
   });
 });
 
 describe("Untracked cost", () => {
-  it("Untracked cost = Home cost - first-level costs (-15.00 - (-0.72 - 0.05 - 14.00) = -0.23), not clamped", () => {
+  it("Untracked cost = Untracked energy at Home's average price (-15.00 × 40 / 300 = -2.00)", () => {
     const untracked = findNode(buildEnergyTree(ownerConfig(), negativeMonthValues()), "untracked");
     expect(untracked.hasCost).toBe(true);
-    expect(untracked.cost).toBeCloseTo(-0.23, 10);
+    expect(untracked.cost).toBeCloseTo(-2, 10);
     expect(untracked.energy).toBe(40);
   });
 
-  it("Untracked cost does not subtract Rest or grandchildren costs", () => {
-    // Changing AC's cost changes Rest Casa but not Untracked.
-    const tree = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.acCost]: 5 }));
-    expect(findNode(tree, "rest:casa").cost).toBeCloseTo(-5.64, 10);
-    expect(findNode(tree, "untracked").cost).toBeCloseTo(-0.23, 10);
+  it("Untracked cost does not depend on the consumers' costs: missing cost statistics do not move into it", () => {
+    // Casa's cost statistics missing part of the month (October 2026 on the live instance).
+    const tree = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.casaCost]: -10 }));
+    expect(findNode(tree, "untracked").cost).toBeCloseTo(-2, 10);
   });
 
   it("Untracked has no cost when Home has no cost (grid export without compensation)", () => {
@@ -287,20 +289,14 @@ describe("Untracked cost", () => {
     expect(findNode(tree, "untracked")).toMatchObject({ hasCost: false, cost: null });
   });
 
-  it("Untracked has no cost when a first-level consumer has no cost sensor", () => {
-    const tree = buildEnergyTree(makeConfig(ownerWithoutCost("masina"), "ro"), negativeMonthValues());
-    expect(findNode(tree, "untracked")).toMatchObject({ hasCost: false, cost: null });
+  it("Untracked keeps its cost when a consumer has no cost sensor", () => {
+    const tree = buildEnergyTree(makeConfig(ownerWithoutCost("masina", "ac"), "ro"), negativeMonthValues());
+    expect(findNode(tree, "untracked").cost).toBeCloseTo(-2, 10);
   });
 
-  it("Untracked keeps its cost when only a grandchild has no cost sensor", () => {
-    const tree = buildEnergyTree(makeConfig(ownerWithoutCost("ac"), "ro"), negativeMonthValues());
-    expect(findNode(tree, "rest:casa").hasCost).toBe(false);
-    expect(findNode(tree, "untracked").cost).toBeCloseTo(-0.23, 10);
-  });
-
-  it("Untracked cost is null (hasCost true) when a first-level cost or the Home cost has no value", () => {
+  it("Untracked cost is null (hasCost true) when the Home cost has no value, not when a consumer's has none", () => {
     const consumerMissing = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.casutaCost]: null }));
-    expect(findNode(consumerMissing, "untracked")).toMatchObject({ hasCost: true, cost: null });
+    expect(findNode(consumerMissing, "untracked").cost).toBeCloseTo(-2, 10);
 
     const homeMissing = buildEnergyTree(ownerConfig(), negativeMonthValues({ [E.gridImportCost]: null }));
     expect(homeMissing.home.cost).toBeNull();

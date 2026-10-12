@@ -37,10 +37,15 @@ export function remainderEnergy(total: number | null, parts: readonly (number | 
   return total === null || sum === null ? null : Math.max(0, total - sum);
 }
 
-/** Cost not covered by the parts: total − Σ parts (not clamped, may be negative), or null when any value is null. */
-export function differenceCost(total: number | null, parts: readonly (number | null)[]): number | null {
-  const sum = sumOrNull(parts);
-  return total === null || sum === null ? null : total - sum;
+/**
+ * Cost of a derived node at the parent's average price: energy × parent cost / parent energy.
+ * 0 when the energy is 0; null when a value is unknown or the parent energy is not positive.
+ * Independent of the siblings' costs, so a gap in a sibling's cost statistics does not move into it.
+ */
+export function averagePriceCost(energy: number | null, parentEnergy: number | null, parentCost: number | null): number | null {
+  if (energy === null || parentEnergy === null || parentCost === null) return null;
+  if (energy === 0) return 0;
+  return parentEnergy > 0 ? (parentCost * energy) / parentEnergy : null;
 }
 
 /** energy / parent energy clamped to 0..1; null when either is unknown or the parent energy is not positive. */
@@ -143,7 +148,6 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
   /** "Rest of <parent>": parent minus its measured children. */
   const remainderNode = (parent: TreeNode, children: readonly TreeNode[]): TreeNode => {
     const energy = remainderEnergy(parent.energy, children.map((child) => child.energy));
-    const hasCost = parent.hasCost && children.every((child) => child.hasCost);
     return makeNode({
       id: `rest:${parent.id}`,
       kind: "rest",
@@ -151,8 +155,8 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
       icon: config.rest.icon,
       color: config.rest.color,
       energy,
-      cost: hasCost ? differenceCost(parent.cost, children.map((child) => child.cost)) : null,
-      hasCost,
+      cost: parent.hasCost ? averagePriceCost(energy, parent.energy, parent.cost) : null,
+      hasCost: parent.hasCost,
       depth: parent.depth + 1,
       share: energyShare(energy, parent.energy),
     });
@@ -191,7 +195,6 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
   home.children = firstLevel;
   if (config.untracked.show && firstLevel.length > 0) {
     const energy = remainderEnergy(home.energy, firstLevel.map((child) => child.energy));
-    const hasCost = home.hasCost && firstLevel.every((child) => child.hasCost);
     home.children = [
       ...firstLevel,
       makeNode({
@@ -201,8 +204,8 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
         icon: config.untracked.icon,
         color: config.untracked.color,
         energy,
-        cost: hasCost ? differenceCost(home.cost, firstLevel.map((child) => child.cost)) : null,
-        hasCost,
+        cost: home.hasCost ? averagePriceCost(energy, home.energy, home.cost) : null,
+        hasCost: home.hasCost,
         depth: 1,
         share: energyShare(energy, home.energy),
       }),

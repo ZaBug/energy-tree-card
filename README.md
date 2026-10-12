@@ -31,7 +31,12 @@ per device.
 - Costs from the statistics of cost sensors, including Home Assistant's own
   energy cost and compensation sensors. Grid export compensation is shown as a credit.
 - Two layouts: circles and lines (tree), or indented horizontal bars. `auto`
-  picks bars on narrow cards; a toggle in the header switches between them.
+  picks bars on narrow cards; a toggle in the header switches between them and
+  the choice is remembered on the device.
+- The tree shrinks to fit a phone (six leaf columns fit a 360 px screen).
+- Tap a node: measured nodes open the more-info dialog, computed nodes (Home,
+  Rest, Untracked) explain their value with the period's numbers.
+  `tap_action` changes this per node.
 - Romanian and English built-in labels; colours from the Home Assistant theme.
 
 ## Installation
@@ -157,6 +162,7 @@ options. A source that is not configured counts as 0.
 | `name` | see [Defaults](#defaults) | Display name |
 | `icon` | see [Defaults](#defaults) | Icon |
 | `color` | see [Defaults](#defaults) | Any CSS colour |
+| `tap_action` | more-info | What a tap does; see [Tap](#tap) |
 
 ### Home
 
@@ -166,6 +172,7 @@ options. A source that is not configured counts as 0.
 | `icon` | see [Defaults](#defaults) | Icon |
 | `color` | see [Defaults](#defaults) | Any CSS colour |
 | `power` | none | Live power sensor for the whole house |
+| `tap_action` | explain | What a tap does; see [Tap](#tap) |
 
 ### Nodes
 
@@ -181,6 +188,7 @@ Each entry of `nodes` is one consumer.
 | `parent` | first level | `id` of another node. Omitted or `home`: directly under Home |
 | `icon` | `mdi:flash` | Icon |
 | `color` | see [Defaults](#defaults) | Any CSS colour |
+| `tap_action` | more-info | What a tap does; see [Tap](#tap) |
 
 Reserved ids: `home`, `solar`, `grid_import`, `grid_export`, `untracked` and any
 id starting with `rest:`.
@@ -196,6 +204,75 @@ Untracked node under Home.
 | `name` | see [Defaults](#defaults) | Display name. In `rest.name`, `{parent}` is replaced by the parent's name |
 | `icon` | see [Defaults](#defaults) | Icon |
 | `color` | see [Defaults](#defaults) | Any CSS colour |
+| `tap_action` | explain | What a tap does; see [Tap](#tap) |
+
+### Tap
+
+Every node is a button: tap or click it, or focus it with the keyboard and
+press Enter or Space.
+
+Without `tap_action`:
+
+| Node | Tap |
+|---|---|
+| Source or consumer with a value | Opens the more-info dialog of its `power` sensor, else of its `energy` sensor |
+| Home, Rest, Untracked | Shows how the value is computed (see below) |
+| Any node showing "—" for its energy | Shows why the value is missing |
+
+`tap_action` takes the standard Home Assistant action object, the same as in
+the built-in cards: `more-info`, `navigate`, `url`, `perform-action`, `none`,
+with their options (`entity`, `navigation_path`, `url_path`, `perform_action`,
+`data`, `target`, `confirmation`, ...). The card only checks that it is an object
+with an `action`; Home Assistant runs it. Two details:
+
+- `more-info` without `entity` uses the node's `power` sensor, else its `energy`
+  sensor.
+- `explain` is an extra action of this card: show the explanation, on any node
+  (on a measured node it names the statistics behind its values).
+
+A node with `action: none` is not a button. `rest.tap_action` applies to all
+Rest nodes.
+
+Mașină opens a dashboard view with the car's costs, Home opens more-info of the
+house power sensor:
+
+```yaml
+home:
+  power: sensor.house_power
+  tap_action:
+    action: more-info
+nodes:
+  - id: masina
+    name: Mașină
+    energy: sensor.wallbox_energie_totala
+    tap_action:
+      action: navigate
+      navigation_path: /lovelace/cost-masina
+```
+
+The explanation uses the numbers of the selected period, formatted like the
+card. For Home it shows the source formula and the cost:
+
+```
+Consum total = Solar + Import rețea − Export rețea = 1.079,6 + 315,7 − 605,4 = 789,9 kWh
+Cost = Import rețea − Export rețea = 350,42 − 272,44 = 77,98 RON
+```
+
+For Rest and Untracked it shows the subtraction, a note when the measured
+consumers add up to more than their parent (the node then shows 0), and the cost
+at the parent's average price:
+
+```
+Rest Casa = Casa − AC − Server = 478,1 − 124,5 − 0,0 = 353,6 kWh
+Cost la prețul mediu Casa: 0,098 RON/kWh × 353,6 kWh = 34,76 RON
+```
+
+A missing value names the sensor ("sensor.x does not exist and has no
+statistics"), and a live power sensor without a value adds "sensor.x:
+unavailable". In bars the explanation opens under the row, in the tree in a
+strip under the tree with a close button. One explanation is open at a time;
+tapping the node again closes it. It follows the period and closes when its
+node is gone.
 
 ### Defaults
 
@@ -280,11 +357,19 @@ parent's cost when every consumer pays the same average price.
 
 - `layout: auto` (default) shows bars when the card is narrower than
   `narrow_width` (600 px by default), otherwise the tree. The toggle in the
-  header switches the layout for the session; it does not change the config.
+  header switches the layout without changing the config. The choice is
+  remembered in the browser's local storage, per device and per dashboard view
+  (cards on the same view share it), and overrides `layout` on the next visit.
+  Changing `layout` or `narrow_width` in the config clears it.
 - Bars: source bars compare the sources with each other; Home's bar is full
   and every consumer bar shows its share of the parent.
-- Tree: a tree wider than the card scrolls sideways, opens centred on Home,
-  and fades the edges that hide nodes.
+- Tree: when the tree does not fit the card at its normal size, it gets
+  compact: the column width becomes the card width divided by the number of
+  leaf columns (at least 56 px), circles and fonts get smaller, and costs may
+  wrap onto two lines. Six leaf columns fit a 344 px card (a 360 px phone).
+  Only a tree that does not fit even then scrolls sideways; it opens centred on
+  Home and fades the edges that hide nodes. Cards of 900 px or more spread the
+  nodes a little.
 - `language` sets the built-in labels (default node names, layout toggle,
   notes). The default follows the Home Assistant user language and falls back
   to English. Node names from the config always win.
@@ -390,7 +475,6 @@ Not in this version:
 - Animations
 - Battery, gas and water
 - Comparison with a previous period
-- More-info dialog when a node is clicked
 
 ## Development
 
@@ -402,6 +486,11 @@ npm run build       # type check + Vite build
 
 The build writes a single file, `dist/energy-tree-card.js`. To try it, copy it
 to `/config/www/` as in the [manual installation](#manual).
+
+`npm run dev` serves a local harness at `/dev/index.html` with the author's
+data and a dark theme. Query parameters: `widths=360,400,1200` (card frames),
+`layout`, `period` (`azi`, `luna`, `aug`, `an`), `locale` and `picker=0`. Taps
+that Home Assistant would handle are logged under the controls.
 
 Releases: set the new version in `package.json` (the card reads its version
 from there), add it to `CHANGELOG.md`, commit, then push a tag `vX.Y.Z` with

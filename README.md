@@ -18,6 +18,8 @@ per device.
 
 ![Phone, bars layout](docs/screenshot-400.png)
 
+![Phone, compact tree with the explanation of Rest Casa](docs/screenshot-400-tree.png)
+
 ![Desktop, tree layout](docs/screenshot-1200.png)
 
 ## Features

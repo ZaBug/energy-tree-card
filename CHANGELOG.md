@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.2 - 2026-10-12
+
+### Changed
+
+- Rest and Untracked costs are their energy at the parent's average price
+  (parent cost / parent energy) instead of the parent cost minus the
+  children's costs. A consumer whose cost statistics miss part of the range no
+  longer shows up as money on Untracked (0.6 kWh shown with 27.17 RON), and
+  Rest / Untracked keep a cost when a sibling has no cost sensor.
+
 ## 0.1.1 - 2026-10-11
 
 ### Fixed

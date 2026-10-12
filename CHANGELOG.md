@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.3 - 2026-10-12
+
+### Added
+
+- Tap on a node: measured nodes open the Home Assistant more-info dialog of
+  their power sensor (else the energy sensor); Home, Rest, Untracked and nodes
+  without data show an explanation of how the value is computed, with this
+  period's numbers (inline in the bars layout, in a strip under the tree).
+  Nodes are keyboard accessible (Tab, Enter, Space).
+- `tap_action` per node, source, `home`, `rest` and `untracked`: any standard
+  Home Assistant action (`more-info`, `navigate`, `url`, `perform-action`,
+  `none`) plus `explain`.
+- Compact tree: when the tree is wider than the card, columns shrink down to
+  56 px (smaller circles and text) so a 6-column tree fits a 360 px phone;
+  only larger trees still scroll sideways.
+- The layout toggle is remembered per device and dashboard view.
+
 ## 0.1.2 - 2026-10-12
 
 ### Changed

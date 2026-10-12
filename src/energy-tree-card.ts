@@ -2,6 +2,15 @@ import { LitElement, html, nothing, type PropertyValues, type TemplateResult } f
 import { classMap } from "lit/directives/class-map.js";
 import { EnergyPeriodSubscription, type PeriodSource } from "./data/collection";
 import { normalizeConfig, statisticIds } from "./data/config";
+import {
+  browserStorage,
+  clearLayoutChoice,
+  layoutSignature,
+  layoutStorageKey,
+  readLayoutChoice,
+  writeLayoutChoice,
+  type ShownLayout,
+} from "./data/layout-store";
 import { statisticsPeriod } from "./data/period";
 import { fetchPeriodValues } from "./data/statistics";
 import { buildEnergyTree } from "./data/tree";
@@ -30,8 +39,6 @@ const CARD_TYPE = "energy-tree-card";
 
 /** Card width (px) from which the tree layout spreads its nodes a little more. */
 const WIDE_WIDTH = 900;
-
-type ShownLayout = "tree" | "bars";
 
 /** The configured language, ignoring values that are not strings (resolveLanguage expects one). */
 function configLanguage(config: unknown): string | undefined {
@@ -143,8 +150,13 @@ export class EnergyTreeCard extends LitElement {
       const language = resolveLanguage(configLanguage(config), hassLanguage(this._hass));
       if (language !== normalized.language) normalized = normalizeConfig(config, language);
     }
-    if (previous && (previous.layout !== normalized.layout || previous.narrow_width !== normalized.narrow_width)) {
-      this._layoutOverride = undefined;
+    // The toggle choice remembered on this device applies while layout and narrow_width stay the same;
+    // changing them in the config clears it.
+    const signature = layoutSignature(normalized);
+    if (!previous || layoutSignature(previous) !== signature) {
+      const storage = browserStorage();
+      if (previous) clearLayoutChoice(storage, this._layoutKey(), layoutSignature(previous));
+      this._layoutOverride = readLayoutChoice(storage, this._layoutKey(), signature);
     }
     this._explained = undefined;
     this._setNormalized(normalized);
@@ -330,6 +342,14 @@ export class EnergyTreeCard extends LitElement {
 
   private _setLayout(layout: ShownLayout): void {
     this._layoutOverride = layout;
+    if (this._normalized) {
+      writeLayoutChoice(browserStorage(), this._layoutKey(), layoutSignature(this._normalized), layout);
+    }
+  }
+
+  /** Storage key of the current dashboard view. */
+  private _layoutKey(): string {
+    return layoutStorageKey(typeof location !== "undefined" ? location.pathname : "");
   }
 
   // ---------------------------------------------------------------------------

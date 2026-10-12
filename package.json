@@ -1,6 +1,6 @@
 {
   "name": "energy-tree-card",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Home Assistant Lovelace card showing household energy as a hierarchy for the Energy date picker period",
   "type": "module",
   "license": "MIT",

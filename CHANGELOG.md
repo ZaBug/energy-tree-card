@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.4 - 2026-10-12
+
+### Fixed
+
+- Compact tree: the minimum column is 54 px (was 56), so a 6-column tree fits
+  the 334 px card of a 360 px phone in Home Assistant without scrolling.
+
 ## 0.1.3 - 2026-10-12
 
 ### Added

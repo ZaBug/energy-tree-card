@@ -45,7 +45,25 @@ export interface NodeStyle {
   color?: string;
 }
 
-export interface SourceConfig extends NodeStyle {
+/**
+ * Standard Home Assistant action object (`more-info`, `navigate`, `url`, `perform-action`, `none`, ...),
+ * handled by the frontend, or `explain`: toggle the card's explanation of the node.
+ * Only `action` is validated by the card; the frontend validates the rest.
+ */
+export interface TapActionConfig {
+  action: string;
+  entity?: string;
+  navigation_path?: string;
+  url_path?: string;
+  perform_action?: string;
+  [key: string]: unknown;
+}
+
+export interface TapOptions {
+  tap_action?: TapActionConfig;
+}
+
+export interface SourceConfig extends NodeStyle, TapOptions {
   /** Statistic id of a cumulative energy sensor (kWh). */
   energy: string;
   /** Statistic id of a cost (grid import) or compensation (grid export) sensor. */
@@ -54,7 +72,7 @@ export interface SourceConfig extends NodeStyle {
   power?: string;
 }
 
-export interface ConsumerConfig extends NodeStyle {
+export interface ConsumerConfig extends NodeStyle, TapOptions {
   id: string;
   name: string;
   energy: string;
@@ -64,7 +82,7 @@ export interface ConsumerConfig extends NodeStyle {
   parent?: string;
 }
 
-export interface AutoNodeConfig {
+export interface AutoNodeConfig extends TapOptions {
   show?: boolean;
   /** For `rest`, "{parent}" is replaced by the parent's name. */
   name?: string;
@@ -89,7 +107,7 @@ export interface EnergyTreeCardConfig {
     grid_import?: SourceConfig;
     grid_export?: SourceConfig;
   };
-  home?: NodeStyle & { power?: string };
+  home?: NodeStyle & TapOptions & { power?: string };
   nodes?: ConsumerConfig[];
   rest?: AutoNodeConfig;
   untracked?: AutoNodeConfig;
@@ -103,6 +121,7 @@ export interface NormalizedSource {
   name: string;
   icon: string;
   color?: string;
+  tap_action?: TapActionConfig;
 }
 
 export interface NormalizedConsumer {
@@ -115,6 +134,7 @@ export interface NormalizedConsumer {
   power?: string;
   /** Parent consumer id, or undefined for first level. */
   parent?: string;
+  tap_action?: TapActionConfig;
 }
 
 export interface NormalizedConfig {
@@ -131,11 +151,11 @@ export interface NormalizedConfig {
     grid_import?: NormalizedSource;
     grid_export?: NormalizedSource;
   };
-  home: { name: string; icon: string; color?: string; power?: string };
+  home: { name: string; icon: string; color?: string; power?: string; tap_action?: TapActionConfig };
   /** Consumers in config order; parents are validated (exist, no cycles). */
   nodes: NormalizedConsumer[];
-  rest: { show: boolean; name: string; icon: string; color?: string };
-  untracked: { show: boolean; name: string; icon: string; color?: string };
+  rest: { show: boolean; name: string; icon: string; color?: string; tap_action?: TapActionConfig };
+  untracked: { show: boolean; name: string; icon: string; color?: string; tap_action?: TapActionConfig };
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +214,8 @@ export interface TreeNode {
   energyEntity?: string;
   /** Statistic id of the cost sensor (undefined for derived nodes and nodes without cost). */
   costEntity?: string;
+  /** Configured `tap_action`; undefined means the default (more-info or explanation). */
+  tapAction?: TapActionConfig;
   /** Home = 0, first-level consumers = 1, their children = 2, ... Sources = 0. */
   depth: number;
   /** energy / parent energy, clamped to 0..1; null for sources, home or unknown values. */

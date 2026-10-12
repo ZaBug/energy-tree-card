@@ -66,3 +66,93 @@ describe("resolveTap: defaults", () => {
     expect(resolveTap(findNode(tree({ ...august2026Values(), [E.server]: 0 }), "server"))).toStrictEqual(moreInfo(E.server));
   });
 });
+
+describe("resolveTap: configured tap_action", () => {
+  function configuredTree(): EnergyTree {
+    const options = ownerOptions();
+    const config = makeConfig(
+      {
+        ...options,
+        sources: {
+          ...options.sources,
+          grid_import: { energy: E.gridImport, tap_action: { action: "more-info" } },
+          grid_export: { energy: E.gridExport, tap_action: { action: "more-info", entity: "sensor.meter" } },
+        },
+        home: { tap_action: { action: "more-info" } },
+        nodes: (options.nodes ?? []).map((node) => {
+          if (node.id === "masina") return { ...node, tap_action: { action: "navigate", navigation_path: "/lovelace/cost-masina" } };
+          if (node.id === "casa") return { ...node, tap_action: { action: "explain" } };
+          if (node.id === "casuta") return { ...node, tap_action: { action: "none" } };
+          if (node.id === "ac") return { ...node, tap_action: { action: "more-info" } };
+          return node;
+        }),
+        rest: { tap_action: { action: "perform-action", perform_action: "script.rest", confirmation: true } },
+        untracked: { tap_action: { action: "more-info", entity: "sensor.untracked" } },
+      },
+      "ro",
+    );
+    return buildEnergyTree(config, august2026Values());
+  }
+
+  it("passes navigate to the frontend with the node's entity", () => {
+    expect(resolveTap(findNode(configuredTree(), "masina"))).toStrictEqual({
+      type: "action",
+      detail: {
+        config: { entity: E.masina, tap_action: { action: "navigate", navigation_path: "/lovelace/cost-masina" } },
+        action: "tap",
+      },
+    });
+  });
+
+  it("fills the entity of more-info: power sensor, else energy sensor; keeps a configured one", () => {
+    const t = configuredTree();
+    expect(resolveTap(findNode(t, "ac"))).toStrictEqual(moreInfo(E.ac));
+    expect(resolveTap(findNode(t, "grid_import"))).toStrictEqual(moreInfo(E.gridImport));
+    expect(resolveTap(findNode(t, "grid_export"))).toStrictEqual({
+      type: "action",
+      detail: { config: { entity: E.gridExport, tap_action: { action: "more-info", entity: "sensor.meter" } }, action: "tap" },
+    });
+    expect(resolveTap(findNode(t, "untracked"))).toStrictEqual({
+      type: "action",
+      detail: { config: { tap_action: { action: "more-info", entity: "sensor.untracked" } }, action: "tap" },
+    });
+  });
+
+  it("leaves more-info without an entity to the frontend when the node has no sensor (Home without power)", () => {
+    expect(resolveTap(findNode(configuredTree(), "home"))).toStrictEqual({
+      type: "action",
+      detail: { config: { tap_action: { action: "more-info" } }, action: "tap" },
+    });
+  });
+
+  it("explain on a measured node explains instead of opening more-info", () => {
+    expect(resolveTap(findNode(configuredTree(), "casa"))).toStrictEqual({ type: "explain" });
+  });
+
+  it("none does nothing", () => {
+    expect(resolveTap(findNode(configuredTree(), "casuta"))).toStrictEqual({ type: "none" });
+  });
+
+  it("passes perform-action with its options (confirmation, ...) on every Rest node", () => {
+    expect(resolveTap(findNode(configuredTree(), "rest:casa"))).toStrictEqual({
+      type: "action",
+      detail: {
+        config: { tap_action: { action: "perform-action", perform_action: "script.rest", confirmation: true } },
+        action: "tap",
+      },
+    });
+  });
+
+  it("applies to nodes whose energy is unavailable too", () => {
+    const options = ownerOptions();
+    const config = makeConfig({
+      ...options,
+      nodes: (options.nodes ?? []).map((node) =>
+        node.id === "masina" ? { ...node, tap_action: { action: "navigate", navigation_path: "/x" } } : node,
+      ),
+    });
+    const values = august2026Values();
+    delete values[E.masina];
+    expect(resolveTap(findNode(buildEnergyTree(config, values), "masina")).type).toBe("action");
+  });
+});

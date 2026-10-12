@@ -111,9 +111,21 @@ export function isExplained(node: TreeNode, ctx: RenderContext): boolean {
   return ctx.interaction?.explained?.node.id === node.id;
 }
 
-/** `aria-expanded` for nodes whose tap toggles the explanation; absent for nodes that run an action. */
-export function ariaExpanded(node: TreeNode, ctx: RenderContext): "true" | "false" | undefined {
-  return resolveTap(node).type === "explain" ? (isExplained(node, ctx) ? "true" : "false") : undefined;
+/** Attributes of a tappable node; a node with `tap_action: none` is not a button. */
+export interface TapAttributes {
+  role?: "button";
+  tabindex?: "0";
+  /** `aria-expanded`, only for nodes whose tap toggles the explanation. */
+  expanded?: "true" | "false";
+  inert: boolean;
+}
+
+export function tapAttributes(node: TreeNode, ctx: RenderContext): TapAttributes {
+  const type = resolveTap(node).type;
+  if (type === "none") return { inert: true };
+  const attributes: TapAttributes = { role: "button", tabindex: "0", inert: false };
+  if (type === "explain") attributes.expanded = isExplained(node, ctx) ? "true" : "false";
+  return attributes;
 }
 
 /** Click handler of a node. */

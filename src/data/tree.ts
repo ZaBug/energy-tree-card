@@ -1,4 +1,12 @@
-import type { EnergyTree, NodeKind, NormalizedConfig, NormalizedConsumer, PeriodValues, TreeNode } from "../types";
+import type {
+  EnergyTree,
+  NodeKind,
+  NormalizedConfig,
+  NormalizedConsumer,
+  PeriodValues,
+  TapActionConfig,
+  TreeNode,
+} from "../types";
 
 type SourceKey = "solar" | "grid_import" | "grid_export";
 
@@ -66,6 +74,7 @@ interface NodeInit {
   power?: string;
   energyEntity?: string;
   costEntity?: string;
+  tapAction?: TapActionConfig;
   depth: number;
   share: number | null;
 }
@@ -88,6 +97,7 @@ function makeNode(init: NodeInit): TreeNode {
   if (init.power !== undefined) node.power = init.power;
   if (init.energyEntity !== undefined) node.energyEntity = init.energyEntity;
   if (init.costEntity !== undefined) node.costEntity = init.costEntity;
+  if (init.tapAction !== undefined) node.tapAction = init.tapAction;
   return node;
 }
 
@@ -118,6 +128,7 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
       power: source.power,
       energyEntity: source.energy,
       costEntity: source.cost,
+      tapAction: source.tap_action,
       depth: 0,
       share: null,
     });
@@ -137,6 +148,7 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
     cost: homeHasCost ? sumOrNull([gridImport?.cost ?? null, gridExport ? gridExport.cost : 0]) : null,
     hasCost: homeHasCost,
     power: config.home.power,
+    tapAction: config.home.tap_action,
     depth: 0,
     share: null,
   });
@@ -160,6 +172,7 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
       energy,
       cost: parent.hasCost ? averagePriceCost(energy, parent.energy, parent.cost) : null,
       hasCost: parent.hasCost,
+      tapAction: config.rest.tap_action,
       depth: parent.depth + 1,
       share: energyShare(energy, parent.energy),
     });
@@ -185,6 +198,7 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
         power: consumer.power,
         energyEntity: consumer.energy,
         costEntity: consumer.cost,
+        tapAction: consumer.tap_action,
         depth: parent.depth + 1,
         share: energyShare(energy, parent.energy),
       });
@@ -210,6 +224,7 @@ export function buildEnergyTree(config: NormalizedConfig, values: PeriodValues):
         energy,
         cost: home.hasCost ? averagePriceCost(energy, home.energy, home.cost) : null,
         hasCost: home.hasCost,
+        tapAction: config.untracked.tap_action,
         depth: 1,
         share: energyShare(energy, home.energy),
       }),

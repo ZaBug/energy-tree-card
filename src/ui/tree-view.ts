@@ -4,7 +4,6 @@ import { ifDefined } from "lit/directives/if-defined.js";
 import { localize } from "../localize";
 import type { EnergyTree, TreeNode } from "../types";
 import {
-  ariaExpanded,
   costValue,
   energyValue,
   isExplained,
@@ -15,6 +14,7 @@ import {
   placeholder,
   powerValue,
   shown,
+  tapAttributes,
   type RenderContext,
 } from "./node";
 
@@ -128,16 +128,23 @@ function circleNode(node: TreeNode, ctx: RenderContext, lines: ReservedLines): T
   const energy = energyValue(node, ctx);
   const cost = costValue(node, ctx);
   const power = powerValue(node, ctx);
-  const classes = { tnode: true, home: node.kind === "home", muted: isMuted(node), explained: isExplained(node, ctx) };
+  const tap = tapAttributes(node, ctx);
+  const classes = {
+    tnode: true,
+    home: node.kind === "home",
+    muted: isMuted(node),
+    explained: isExplained(node, ctx),
+    inert: tap.inert,
+  };
   const onKey = onNodeKey(node, ctx);
   return html`
     <div
       class=${classMap(classes)}
       style=${nodeColorStyle(node)}
-      role="button"
-      tabindex="0"
+      role=${ifDefined(tap.role)}
+      tabindex=${ifDefined(tap.tabindex)}
       data-node=${node.id}
-      aria-expanded=${ifDefined(ariaExpanded(node, ctx))}
+      aria-expanded=${ifDefined(tap.expanded)}
       @click=${onNodeClick(node, ctx)}
       @keydown=${onKey}
       @keyup=${onKey}
@@ -319,6 +326,15 @@ export const treeStyles = css`
   }
   .tnode:active .circle::before {
     opacity: 0.3;
+  }
+  .tnode.inert {
+    cursor: default;
+  }
+  .tnode.inert .circle::before {
+    opacity: 0.1;
+  }
+  .tnode.inert.muted .circle::before {
+    opacity: 0.05;
   }
 
   /* Explanation strip under the tree. */

@@ -6,6 +6,7 @@ import type {
   NormalizedConfig,
   NormalizedConsumer,
   NormalizedSource,
+  TapActionConfig,
 } from "../types";
 
 type SourceKey = "solar" | "grid_import" | "grid_export";
@@ -57,6 +58,16 @@ function optionalBlock(value: unknown, where: string): RawObject {
   return value;
 }
 
+/** Optional action object (tap_action): only checks that it is an object with an `action` string. */
+function optionalAction(obj: RawObject, key: string, where: string): TapActionConfig | undefined {
+  const value = obj[key];
+  if (value === undefined || value === null) return undefined;
+  if (!isObject(value) || typeof value.action !== "string" || value.action.trim() === "") {
+    fail(`${where}.${key} must be an object with an "action" (for example more-info, navigate, explain or none)`);
+  }
+  return { ...value } as TapActionConfig;
+}
+
 function optionalBoolean(obj: RawObject, key: string, where: string, fallback: boolean): boolean {
   const value = obj[key];
   if (value === undefined || value === null) return fallback;
@@ -90,6 +101,7 @@ function normalizeSource(key: SourceKey, raw: unknown, language: Language): Norm
     name: optionalString(raw, "name", where) ?? localize(language, key),
     icon: optionalString(raw, "icon", where) ?? ICONS[key],
     color: optionalString(raw, "color", where),
+    tap_action: optionalAction(raw, "tap_action", where),
   });
 }
 
@@ -117,6 +129,7 @@ function normalizeNodes(rawNodes: unknown): NormalizedConsumer[] {
       energy: requiredString(raw, "energy", where),
       cost: optionalString(raw, "cost", where),
       power: optionalString(raw, "power", where),
+      tap_action: optionalAction(raw, "tap_action", where),
     });
     nodes.push(node);
     rawParents.push(raw.parent);
@@ -200,6 +213,7 @@ export function normalizeConfig(config: EnergyTreeCardConfig, language: Language
       icon: optionalString(home, "icon", "home") ?? ICONS.home,
       color: optionalString(home, "color", "home"),
       power: optionalString(home, "power", "home"),
+      tap_action: optionalAction(home, "tap_action", "home"),
     }),
     nodes,
     rest: compact({
@@ -207,12 +221,14 @@ export function normalizeConfig(config: EnergyTreeCardConfig, language: Language
       name: optionalString(rest, "name", "rest") ?? localize(language, "rest"),
       icon: optionalString(rest, "icon", "rest") ?? ICONS.rest,
       color: optionalString(rest, "color", "rest"),
+      tap_action: optionalAction(rest, "tap_action", "rest"),
     }),
     untracked: compact({
       show: optionalBoolean(untracked, "show", "untracked", true),
       name: optionalString(untracked, "name", "untracked") ?? localize(language, "untracked"),
       icon: optionalString(untracked, "icon", "untracked") ?? ICONS.untracked,
       color: optionalString(untracked, "color", "untracked"),
+      tap_action: optionalAction(untracked, "tap_action", "untracked"),
     }),
   });
 }

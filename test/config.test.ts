@@ -314,3 +314,51 @@ describe("statisticIds", () => {
     expect(statisticIds(ownerConfig())).not.toContain("sensor.casa_power");
   });
 });
+
+describe("normalizeConfig: tap_action", () => {
+  const navigate = { action: "navigate", navigation_path: "/lovelace/cost-masina" };
+
+  it("keeps tap_action on sources, nodes, home, rest and untracked as written", () => {
+    const config = normalize({
+      sources: { grid_import: { energy: "sensor.import", tap_action: { action: "more-info" } } },
+      home: { tap_action: { action: "explain" } },
+      nodes: [node("masina", { tap_action: navigate })],
+      rest: { tap_action: { action: "none" } },
+      untracked: { tap_action: { action: "url", url_path: "https://example.com" } },
+    });
+    expect(config.sources.grid_import?.tap_action).toStrictEqual({ action: "more-info" });
+    expect(config.home.tap_action).toStrictEqual({ action: "explain" });
+    expect(config.nodes[0]?.tap_action).toStrictEqual(navigate);
+    expect(config.rest.tap_action).toStrictEqual({ action: "none" });
+    expect(config.untracked.tap_action).toStrictEqual({ action: "url", url_path: "https://example.com" });
+  });
+
+  it("copies the action object and leaves the other fields to Home Assistant", () => {
+    const action = { action: "perform-action", perform_action: "light.toggle", target: { entity_id: "light.x" } };
+    const config = normalize({ nodes: [node("a", { tap_action: action })] });
+    expect(config.nodes[0]?.tap_action).toStrictEqual(action);
+    expect(config.nodes[0]?.tap_action).not.toBe(action);
+  });
+
+  it("treats null as not configured", () => {
+    expect(normalize({ nodes: [node("a", { tap_action: null })] }).nodes[0]).not.toHaveProperty("tap_action");
+  });
+
+  it.each([
+    ["a string", "more-info"],
+    ["a list", [{ action: "more-info" }]],
+    ["an object without action", { navigation_path: "/x" }],
+    ["a non-string action", { action: 1 }],
+    ["an empty action", { action: " " }],
+  ])("rejects %s", (_label, value) => {
+    expect(() => normalize({ nodes: [node("a", { tap_action: value })] })).toThrow(
+      'node "a".tap_action must be an object with an "action"',
+    );
+    expect(() => normalize({ home: { tap_action: value } })).toThrow('home.tap_action must be an object with an "action"');
+    expect(() => normalize({ untracked: { tap_action: value } })).toThrow("untracked.tap_action");
+    expect(() => normalize({ rest: { tap_action: value } })).toThrow("rest.tap_action");
+    expect(() => normalize({ sources: { solar: { energy: "s.a", tap_action: value } } })).toThrow(
+      "sources.solar.tap_action",
+    );
+  });
+});

@@ -5,7 +5,6 @@ import { styleMap } from "lit/directives/style-map.js";
 import { localize } from "../localize";
 import type { EnergyTree, TreeNode } from "../types";
 import {
-  ariaExpanded,
   costValue,
   energyValue,
   fraction,
@@ -17,6 +16,7 @@ import {
   placeholder,
   powerValue,
   shown,
+  tapAttributes,
   type RenderContext,
 } from "./node";
 
@@ -67,22 +67,24 @@ function barRow(node: TreeNode, width: number, ctx: RenderContext): TemplateResu
   const energy = energyValue(node, ctx);
   const cost = costValue(node, ctx);
   const power = powerValue(node, ctx);
+  const tap = tapAttributes(node, ctx);
   const classes = {
     row: true,
     home: node.kind === "home",
     muted: isMuted(node),
     parent: node.children.length > 0,
     explained: isExplained(node, ctx),
+    inert: tap.inert,
   };
   const onKey = onNodeKey(node, ctx);
   return html`
     <div
       class=${classMap(classes)}
       style=${nodeColorStyle(node)}
-      role="button"
-      tabindex="0"
+      role=${ifDefined(tap.role)}
+      tabindex=${ifDefined(tap.tabindex)}
       data-node=${node.id}
-      aria-expanded=${ifDefined(ariaExpanded(node, ctx))}
+      aria-expanded=${ifDefined(tap.expanded)}
       @click=${onNodeClick(node, ctx)}
       @keydown=${onKey}
       @keyup=${onKey}
@@ -174,6 +176,12 @@ export const barsStyles = css`
   }
   .row:active::before {
     opacity: 0.11;
+  }
+  .row.inert {
+    cursor: default;
+  }
+  .row.inert::before {
+    display: none;
   }
   .row:focus-visible::after {
     content: "";
